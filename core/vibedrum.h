@@ -36,6 +36,7 @@ std::vector<Bar> bars(const Song&);
 std::vector<std::pair<int, int>> tempos(const Song&);     // tick, microseconds per quarter
 std::vector<Section> sections(const Song&);
 std::vector<Span> fills(const Song&);
+std::vector<std::pair<int, std::string>> rows(const Song&);   // drum pitches in use with lane names, top to bottom as show prints them
 
 struct ShowOpts { bool summaryOnly = false, header = true, exactVel = false; };   // exactVel: a comment line of exact velocities under each row
 std::string show(const Song&, int barFrom = 1, int barTo = 0, ShowOpts = {});

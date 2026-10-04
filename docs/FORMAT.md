@@ -142,8 +142,10 @@ How the engine decides, so the knowledge docs can rely on it:
 
 ```
 vibedrum show  in.mid [--bars 17-24 | --bars 4-5,12-13] [--summary] [--vel] [--map FILE] [--track N] [--riff N]
+vibedrum json  in.mid               # drum notes at their exact ticks, rows in show order, for the UI
 vibedrum apply in.mid edits.txt -o out.mid [--map FILE] [--track N]
 vibedrum play  in.mid [--bars 17-24] [--loop] [--drums-only] [--gain 0.5]
+vibedrum render in.mid -o out.wav [--bars 17-24] [--drums-only] [--gain 1]   # same GM synth as play, into a WAV
 vibedrum clip                 # path of the .mid file copied in Finder
 vibedrum clip  out.mid        # put out.mid on the clipboard, paste it into Finder or the DAW
 vibedrum new   out.mid [--bars 16] [--bpm 140] [--sig 4/4]

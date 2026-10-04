@@ -398,6 +398,16 @@ std::vector<std::pair<int, int>> tempos(const Song& s) {
 std::vector<Section> sections(const Song& s) { return analyze(s).secs; }
 std::vector<Span> fills(const Song& s) { return analyze(s).fills; }
 
+std::vector<std::pair<int, std::string>> rows(const Song& s) {
+    std::set<int> used;
+    for (size_t ti = 0; ti < s.tracks.size(); ti++) for (auto& n : s.tracks[ti].notes) if (isDrum(s, ti, n)) used.insert(n.pitch);
+    std::vector<int> p(used.begin(), used.end());
+    std::sort(p.begin(), p.end(), [&](int x, int y) { int rx = rank(role(lane(s, x))), ry = rank(role(lane(s, y))); return rx != ry ? rx < ry : x > y; });
+    std::vector<std::pair<int, std::string>> out;
+    for (int x : p) out.push_back({x, lane(s, x)});
+    return out;
+}
+
 // ---------- public: show
 
 std::string show(const Song& s, int from, int to, ShowOpts opt) {
@@ -409,8 +419,7 @@ std::string show(const Song& s, int from, int to, ShowOpts opt) {
     std::map<int, std::vector<int>> vels; int total = 0;
     for (auto& bar : a.drum) for (auto n : bar) { vels[n->pitch].push_back(n->vel); total++; }
     std::vector<int> pitches;
-    for (auto& [p, v] : vels) pitches.push_back(p);
-    std::sort(pitches.begin(), pitches.end(), [&](int x, int y) { int rx = rank(role(lane(s, x))), ry = rank(role(lane(s, y))); return rx != ry ? rx < ry : x > y; });
+    for (auto& [p, name] : rows(s)) if (vels.count(p)) pitches.push_back(p);
     size_t W = 8;
     for (int p : pitches) W = std::max(W, lane(s, p).size() + 1 + std::to_string(p).size());
 

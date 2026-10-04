@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vibedrum</title>
+<style>
+  :root {
+    --bg: #0f1114; --panel: #171a1f; --stripe: #13161a; --line: #242931; --line2: #323944; --line3: #4c5564;
+    --text: #e6e8eb; --dim: #8b929c;
+    --note: #6ea8fe; --add: #3fb950; --del: #f85149; --vel: #e3b341;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  header b { font-size: 15px; letter-spacing: .02em; }
+  #song { color: var(--dim); }
+  #tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  #tabs button, .btn { background: var(--panel); color: var(--dim); border: 1px solid var(--line2); border-radius: 6px; padding: 3px 10px; font: inherit; cursor: pointer; }
+  #tabs button.on { color: var(--text); border-color: var(--note); }
+  .btn:hover, #tabs button:hover { color: var(--text); }
+  #diff { display: flex; gap: 10px; font-variant-numeric: tabular-nums; color: var(--dim); }
+  .add { color: var(--add); } .del { color: var(--del); } .vel { color: var(--vel); }
+  .spacer { flex: 1; }
+  #msg { padding: 8px 16px; color: var(--dim); min-height: 2.2em; white-space: pre-wrap; }
+  #msg.err { color: var(--del); }
+  #empty { margin: 32px 16px; border: 2px dashed var(--line2); border-radius: 12px; padding: 64px 16px; text-align: center; color: var(--dim); font-size: 16px; }
+  #empty strong { display: block; color: var(--text); font-size: 20px; margin-bottom: 8px; }
+  body.over #empty, body.over #rollwrap { outline: 2px dashed var(--note); outline-offset: -6px; }
+  #rollwrap { display: flex; margin: 0 16px 12px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  #labels { flex: none; border-right: 1px solid var(--line); }
+  #labels div { height: 26px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; white-space: nowrap; }
+  #labels div:nth-child(2n+3) { background: var(--stripe); }
+  #labels span { color: var(--dim); font-variant-numeric: tabular-nums; }
+  #scroll { overflow-x: auto; flex: 1; }
+  svg { display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 16px 16px; color: var(--dim); font-size: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <b>vibedrum</b>
+  <span id="song"></span>
+  <nav id="tabs"></nav>
+  <button class="btn" id="play" hidden>▶ Play</button>
+  <span id="diff"></span>
+  <span class="spacer"></span>
+  <button class="btn" id="paste">Paste from clipboard</button>
+</header>
+<div id="msg"></div>
+<div id="empty"><strong>Drop a MIDI file here</strong>or copy it in Finder and press ⌘V</div>
+<div id="rollwrap" hidden><div id="labels"></div><div id="scroll"></div></div>
+<div class="legend" id="legend" hidden>
+  <span><i style="background:var(--note)"></i>unchanged</span>
+  <span><i style="background:var(--add)"></i>added</span>
+  <span><i style="border:1.5px dashed var(--del)"></i>removed</span>
+  <span><i style="background:var(--vel)"></i>velocity changed</span>
+  <span>Tell Claude in chat what to change, new versions show up here by themselves. Drop or ⌘V another file any time.</span>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const RH = 26, HEAD = 22;   // row height, bar number strip
+let state = { song: null, stamp: -1, versions: [] }, sel = null, follow = true, cache = {}, busy = false, msgTimer;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'server said ' + r.status);
+  return j;
+}
+const notes = f => cache[f] ??= api('/api/notes?f=' + encodeURIComponent(f));
+const vname = f => 'v' + f.match(/\.v(\d+)\.mid$/)[1];
+
+function msg(text, err) {
+  $('msg').textContent = text; $('msg').className = err ? 'err' : '';
+  clearTimeout(msgTimer); if (!err) msgTimer = setTimeout(() => $('msg').textContent = '', 5000);
+}
+
+// follow work/: a new song or a new version shows up on its own, unless an older version is being looked at
+async function refresh() {
+  if (busy) return; busy = true;
+  try {
+    const s = await api('/api/state');
+    if (s.song !== state.song || s.stamp !== state.stamp) {
+      const was = sel;
+      if (s.song !== state.song || follow || !s.versions.includes(sel)) sel = s.versions.at(-1);
+      if (sel !== was) stop();
+      state = s; cache = {};
+      await draw();
+    }
+  } catch (e) { msg(e.message, true); }
+  busy = false;
+}
+
+async function draw() {
+  const has = !!state.song;
+  $('empty').hidden = has; $('rollwrap').hidden = !has; $('legend').hidden = !has; $('play').hidden = !has;
+  $('song').textContent = state.song || '';
+  $('tabs').replaceChildren(...state.versions.map(v => {
+    const b = document.createElement('button');
+    b.textContent = vname(v); b.className = v === sel ? 'on' : '';
+    b.onclick = () => { sel = v; follow = v === state.versions.at(-1); stop(); draw(); };
+    return b;
+  }));
+  if (!has) return $('diff').replaceChildren();
+  const i = state.versions.indexOf(sel);
+  const [cur, prev] = await Promise.all([notes(sel), i > 0 ? notes(state.versions[i - 1]) : null]);
+  roll(cur, prev, i > 0 ? vname(state.versions[i - 1]) : null);
+}
+
+function roll(cur, prev, prevName) {
+  const ppq = cur.ppq, six = ppq / 4;
+  // lanes: this version's rows, plus any lane the previous version had and this one lost, kept beside its old neighbour
+  const rows = cur.rows.map(r => r.slice());
+  if (prev) prev.rows.forEach((r, k) => {
+    if (rows.some(x => x[0] === r[0])) return;
+    rows.splice(k ? rows.findIndex(x => x[0] === prev.rows[k - 1][0]) + 1 : 0, 0, r);
+  });
+  const bars = prev && prev.bars.length > cur.bars.length ? prev.bars : cur.bars;
+  const end = bars.length ? bars.at(-1)[0] + bars.at(-1)[1] : 4 * ppq;
+
+  $('labels').innerHTML = `<div style="height:${HEAD}px"></div>` + rows.map(([p, name]) => `<div>${esc(name)}<span>${p}</span></div>`).join('');
+  const avail = $('rollwrap').clientWidth - $('labels').offsetWidth - 2;
+  const k = Math.max(avail / end, 180 / (4 * ppq));   // fit the song, but never squeeze a 4/4 bar under 180px
+  const W = Math.ceil(end * k), H = HEAD + Math.max(rows.length, 1) * RH;
+  const y = {}; rows.forEach(([p], j) => y[p] = HEAD + j * RH);
+
+  let s = '';
+  rows.forEach((r, j) => { if (j % 2) s += `<rect x="0" y="${HEAD + j * RH}" width="${W}" height="${RH}" fill="var(--stripe)"/>`; });
+  bars.forEach(([start, len], b) => {
+    for (let t = 0; t < len; t += six) {
+      const x = Math.round((start + t) * k) + .5;
+      s += `<line x1="${x}" x2="${x}" y1="${t ? HEAD : 0}" y2="${H}" stroke="var(${t === 0 ? '--line3' : t % ppq === 0 ? '--line2' : '--line'})"/>`;
+    }
+    s += `<text x="${start * k + 5}" y="15" fill="var(--dim)" font-size="11">${b + 1}</text>`;
+  });
+  s += `<line x1="0" x2="${W}" y1="${HEAD - .5}" y2="${HEAD - .5}" stroke="var(--line2)"/>`;
+  if (!rows.length) s += `<text x="12" y="${HEAD + 17}" fill="var(--dim)" font-size="12">no drum notes in this version</text>`;
+
+  const where = t => {
+    let b = bars.findIndex(([st, ln]) => t >= st && t < st + ln); if (b < 0) b = bars.length - 1;
+    return `bar ${b + 1} beat ${+(1 + (t - bars[b][0]) / ppq).toFixed(2)}`;
+  };
+  const lane = Object.fromEntries(rows), w = Math.max(3, six * k * .7);
+  const glyph = ([t, , p, v], kind, old) => {
+    const h = RH * (.3 + .55 * v / 127), tip = `${lane[p]} · ${where(t)} · vel ${old ? old[3] + ' → ' : ''}${v}${kind === 'add' ? ' · added' : kind === 'del' ? ' · removed' : ''}`;
+    const paint = kind === 'del' ? 'fill="none" stroke="var(--del)" stroke-dasharray="3 2" stroke-width="1.5"'
+                                 : `fill="var(--${kind === 'same' ? 'note' : kind})" fill-opacity="${(.45 + .55 * v / 127).toFixed(2)}"`;
+    return `<rect x="${(t * k).toFixed(1)}" y="${(y[p] + (RH - h) / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" ${paint}><title>${esc(tip)}</title></rect>`;
+  };
+
+  // diff against the previous version, by onset and pitch
+  const key = n => n[0] + ':' + n[2], before = prev && new Map(prev.notes.map(n => [key(n), n])), now = new Set(cur.notes.map(key));
+  let add = 0, del = 0, vel = 0;
+  if (prev) for (const n of prev.notes) if (!now.has(key(n))) { del++; s += glyph(n, 'del'); }
+  for (const n of cur.notes) {
+    const o = before && before.get(key(n)), kind = !before ? 'same' : !o ? 'add' : o[3] !== n[3] ? 'vel' : 'same';
+    add += kind === 'add'; vel += kind === 'vel';
+    s += glyph(n, kind, kind === 'vel' && o);
+  }
+  $('scroll').innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`;
+  $('diff').innerHTML = prev ? `<span class="add">+${add} added</span><span class="del">−${del} removed</span><span class="vel">~${vel} velocity</span><span>vs ${prevName}</span>`
+                             : `<span>${cur.notes.length} notes, ${bars.length} bars</span>`;
+}
+
+// play: the selected version, rendered by the server with the same GM synth as `vibedrum play`
+// ponytail: no playhead and no loop, add when wanted
+const audio = new Audio();
+function stop() { audio.pause(); $('play').textContent = '▶ Play'; }
+$('play').onclick = () => {
+  if (!audio.paused) return stop();
+  audio.src = '/api/audio?f=' + encodeURIComponent(sel) + '&s=' + state.stamp;
+  audio.play().then(() => { $('play').textContent = '■ Stop'; msg(''); }, e => msg('Could not play: ' + e.message, true));
+};
+audio.onended = stop;
+
+// in: drop a file anywhere, or ⌘V a .mid copied in Finder (the server reads the clipboard through `vibedrum clip`)
+async function upload(f) {
+  msg('Loading ' + f.name + ' ...');
+  try { await api('/api/drop', { method: 'POST', headers: { 'X-Name': encodeURIComponent(f.name) }, body: f }); follow = true; msg('Loaded ' + f.name); refresh(); }
+  catch (e) { msg(e.message, true); }
+}
+async function paste() {
+  try { const r = await api('/api/paste', { method: 'POST' }); follow = true; msg('Pasted ' + r.song); refresh(); }
+  catch (e) { msg(e.message, true); }
+}
+document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('over'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('over'); });
+document.addEventListener('drop', e => {
+  e.preventDefault(); document.body.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  f ? upload(f) : msg('That drop had no file in it. Straight from a DAW, drag the region to the Desktop first, then drop that file here.', true);
+});
+document.addEventListener('paste', e => { e.preventDefault(); paste(); });
+$('paste').onclick = paste;
+addEventListener('resize', () => state.song && draw());
+setInterval(refresh, 1000); refresh();
+</script>
+</body>
+</html>

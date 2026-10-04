@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "vibedrum-ui", "runtimeExecutable": "python3", "runtimeArgs": ["ui/server.py"], "port": 8790 }
+  ]
+}
