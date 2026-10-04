@@ -1,0 +1,54 @@
+# Builds demo/djent-demo.mid: 16 bars at 130 bpm, stiff on purpose so there is something to fix.
+#   vibedrum new demo/djent-demo.mid --bars 16 --bpm 130
+#   vibedrum apply demo/djent-demo.mid demo/djent-demo.txt -o demo/djent-demo.mid
+
+# bars 1-8, verse: closed hat eighths at one velocity, half time snare, syncopated kick
+bar 1 grid=16
+hh 42     |7-7- 7-7- 7-7- 7-7-|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9-99 --9- -9-9 9---|
+bar 2 grid=16
+hh 42     |7-7- 7-7- 7-7- 7-7-|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9--9 -99- -9-- 9-9-|
+copy from=1-2 to=3-8
+bar 1 grid=16
+crash1 49 |9--- ---- ---- ----|
+hh 42     |--7- 7-7- 7-7- 7-7-|
+# small fill, beat 4
+bar 4 grid=16
+hh 42     |7-7- 7-7- 7-7- ----|
+snare 38  |---- ---- 9--- 77--|
+tom2 48   |---- ---- ---- --77|
+kick 36   |9--9 -99- -9-- ----|
+# plain fill, beats 3 and 4
+bar 8 grid=16
+hh 42     |7-7- 7-7- ---- ----|
+snare 38  |---- ---- 7777 ----|
+tom2 48   |---- ---- ---- 77--|
+tom5 43   |---- ---- ---- --77|
+kick 36   |9--9 -99- ---- ----|
+
+# bars 9-16, breakdown: china quarters, snare on 3, chugging kick
+bar 9 grid=16
+china 52  |9--- 9--- 9--- 9---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |99-9 9--9 -99- 99-9|
+bar 10 grid=16
+china 52  |9--- 9--- 9--- 9---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9-99 -9-9 -9-9 9-9-|
+copy from=9-10 to=11-16
+bar 9 grid=16
+crash1 49 |9--- ---- ---- ----|
+china 52  |---- 9--- 9--- 9---|
+bar 12 grid=16
+china 52  |9--- 9--- 9--- ----|
+snare 38  |---- ---- 9--- 7-7-|
+tom5 43   |---- ---- ---- -7-7|
+bar 16 grid=16
+china 52  |9--- 9--- ---- ----|
+snare 38  |---- ---- 77-- 77--|
+tom2 48   |---- ---- --77 ----|
+tom5 43   |---- ---- ---- --77|
+kick 36   |9-99 -9-9 ---- ----|

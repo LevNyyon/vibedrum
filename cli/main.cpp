@@ -1,0 +1,216 @@
+// vibedrum CLI: show, apply, play, clip, new, selfcheck. Usage and format: docs/FORMAT.md
+#include "vibedrum.h"
+
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <stdexcept>
+
+#ifdef __APPLE__
+#include <AudioToolbox/AudioToolbox.h>
+#include <unistd.h>
+#endif
+
+struct Args { std::vector<std::string> pos; std::map<std::string, std::string> opt; };
+
+static std::vector<uint8_t> slurp(const std::string& path) {
+    std::istream* in = &std::cin; std::ifstream f;
+    if (path != "-") { f.open(path, std::ios::binary); if (!f) throw std::runtime_error("cannot read " + path); in = &f; }
+    return {std::istreambuf_iterator<char>(*in), {}};
+}
+
+static vd::Song load(const Args& a) {
+    if (a.pos.empty()) throw std::runtime_error("which MIDI file?");
+    auto s = vd::parseMidi(slurp(a.pos[0]));
+    if (a.opt.count("map")) { auto m = slurp(a.opt.at("map")); vd::loadMap(s, {m.begin(), m.end()}); }
+    if (a.opt.count("track") || a.opt.count("riff"))
+        vd::pickParts(s, a.opt.count("track") ? atoi(a.opt.at("track").c_str()) : -1, a.opt.count("riff") ? atoi(a.opt.at("riff").c_str()) : -1);
+    return s;
+}
+
+static void barRange(const Args& a, int& from, int& to) {   // --bars 17-24 or --bars 17
+    from = 1; to = 0;
+    if (!a.opt.count("bars")) return;
+    auto& v = a.opt.at("bars"); auto dash = v.find('-');
+    from = to = atoi(v.c_str());
+    if (dash != v.npos) to = atoi(v.c_str() + dash + 1);
+}
+
+// ponytail: plays through the built in macOS General MIDI synth, enough to judge a pattern.
+// Real kit sounds come when the core sits in a plugin in front of a drum sampler.
+static int play(const vd::Song& s, int from, int to, bool loop, bool drumsOnly, double gain) {
+#ifdef __APPLE__
+    auto B = vd::bars(s);
+    if (B.empty()) throw std::runtime_error("nothing to play");
+    if (to <= 0 || to > (int)B.size()) to = B.size();
+    from = std::min(std::max(1, from), to);
+    int t0 = B[from - 1].start, t1 = B[to - 1].start + B[to - 1].len, early = s.ppq / 24;
+    double q = s.ppq, bpm = 120;
+
+    MusicSequence seq; MusicTrack tempo;
+    NewMusicSequence(&seq); MusicSequenceGetTempoTrack(seq, &tempo);
+    for (auto& [tick, us] : vd::tempos(s)) if (tick <= t0) bpm = 60e6 / us;
+    MusicTrackNewExtendedTempoEvent(tempo, 0, bpm);
+    for (auto& [tick, us] : vd::tempos(s)) if (tick > t0 && tick < t1) MusicTrackNewExtendedTempoEvent(tempo, (tick - t0) / q, 60e6 / us);
+    for (size_t ti = 0; ti < s.tracks.size(); ti++) {
+        MusicTrack tr; MusicSequenceNewTrack(seq, &tr);
+        for (auto& e : s.tracks[ti].events) if (e.bytes.size() == 2 && (e.bytes[0] & 0xf0) == 0xc0 && e.tick < t1) {
+            MIDIChannelMessage m{e.bytes[0], e.bytes[1], 0, 0};
+            MusicTrackNewMIDIChannelEvent(tr, std::max(0, e.tick - t0) / q, &m);
+        }
+        for (auto& n : s.tracks[ti].notes) {
+            bool drum = vd::isDrum(s, ti, n);
+            if (n.tick < t0 - early || n.tick >= t1 - early || (drumsOnly && !drum)) continue;
+            auto gm = s.gm.find(n.pitch);
+            MIDINoteMessage m{UInt8(drum ? 9 : n.ch), UInt8(drum && gm != s.gm.end() ? gm->second : n.pitch), UInt8(std::max(1.0, n.vel * gain)), 0, Float32(n.dur / q)};
+            MusicTrackNewMIDINoteEvent(tr, std::max(0, n.tick - t0) / q, &m);
+        }
+    }
+    MusicPlayer p; NewMusicPlayer(&p);
+    OSStatus err = MusicPlayerSetSequence(p, seq);
+    if (!err) err = MusicPlayerPreroll(p);
+    if (!err) err = MusicPlayerStart(p);
+    if (err) throw std::runtime_error("playback failed, OSStatus " + std::to_string(err));
+    printf("playing bars %d-%d at %g bpm%s, ctrl-c stops\n", from, to, bpm, loop ? ", looping" : "");
+    double len = (t1 - t0) / q;
+    for (MusicTimeStamp now = 0;; usleep(10000)) {
+        MusicPlayerGetTime(p, &now);
+        if (loop && now >= len) MusicPlayerSetTime(p, 0);
+        if (!loop && now >= len + 2) break;   // two beats of cymbal tail
+    }
+    MusicPlayerStop(p); DisposeMusicPlayer(p); DisposeMusicSequence(seq);
+    return 0;
+#else
+    throw std::runtime_error("play is macOS only, open the MIDI file in a DAW");
+#endif
+}
+
+// clip: the macOS clipboard as the way in and out. No argument: print the path of the .mid file copied in Finder.
+// With a file: put it on the clipboard, ready to paste into Finder or a DAW that accepts pasted files.
+// ponytail: file references only. Notes copied inside a DAW piano roll use a private format per DAW, add per DAW when needed.
+static int clip(const Args& a) {
+    auto run = [](const std::string& cmd) {
+        std::string out; char buf[1024];
+        FILE* p = popen(cmd.c_str(), "r");
+        for (size_t n; p && (n = fread(buf, 1, sizeof buf, p)) > 0;) out.append(buf, n);
+        int rc = p ? pclose(p) : 1;
+        while (!out.empty() && out.back() == '\n') out.pop_back();
+        return rc ? std::string() : out;
+    };
+    if (a.pos.empty()) {
+        auto path = run("osascript -e 'POSIX path of (the clipboard as «class furl»)' 2>/dev/null");
+        if (path.empty() || access(path.c_str(), R_OK)) throw std::runtime_error("no file on the clipboard, copy a .mid file in Finder first");   // text also coerces to a path, so check it exists
+        puts(path.c_str());
+        return 0;
+    }
+    char* abs = realpath(a.pos[0].c_str(), nullptr);
+    if (!abs) throw std::runtime_error("cannot find " + a.pos[0]);
+    std::string q;
+    for (char c : std::string(abs)) q += c == '\'' ? std::string("'\\''") : std::string(1, c);
+    free(abs);
+    run("osascript -e 'on run argv' -e 'set the clipboard to POSIX file (item 1 of argv)' -e 'end run' '" + q + "'");
+    printf("on the clipboard: %s\n", a.pos[0].c_str());
+    return 0;
+}
+
+#define CHECK(c) do { if (!(c)) { fprintf(stderr, "selfcheck FAILED, line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+
+static int selfcheck() {
+    auto same = [](const std::vector<vd::Note>& a, const std::vector<vd::Note>& b) {
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); i++) if (a[i].tick != b[i].tick || a[i].dur != b[i].dur || a[i].pitch != b[i].pitch || a[i].vel != b[i].vel) return false;
+        return true;
+    };
+    auto count = [](const vd::Song& s, int lo, int hi, int vel = -1) { int n = 0; for (auto& x : s.tracks[s.drumTrack].notes) n += x.pitch >= lo && x.pitch <= hi && (vel < 0 || x.vel == vel); return n; };
+
+    // three groove bars and a fill bar, written as grid
+    auto s = vd::newSong(4, 140, 4, 4);
+    std::string groove = "hh 42 |9595 9595 9595 9595|\nsnare 38 |---- 9--- ---- 9---|\nkick 36 |9--9 ---- 9-9- ----|\n", script;
+    for (int b = 1; b <= 3; b++) script += "bar " + std::to_string(b) + " grid=16\n" + groove;
+    script += "bar 4 grid=16\nhh 42 |9595 9595 ---- ----|\nsnare |---- 9--- 99-- ----|\ntom1 50 |---- ---- --77 ----|\ntom5 43 |---- ---- ---- 7777|\nkick 36 |9--9 ---- ---- ----|\n";
+    vd::apply(s, script);
+    auto N = [&]() -> std::vector<vd::Note>& { return s.tracks[s.drumTrack].notes; };   // apply swaps the song, so no reference is held across it
+    CHECK(N().size() == 85);
+
+    // MIDI bytes round trip
+    auto s2 = vd::parseMidi(vd::writeMidi(s));
+    CHECK(s2.drumTrack == 1 && same(s2.tracks[1].notes, N()) && vd::show(s2) == vd::show(s));
+
+    // the fill is found, and only there
+    auto f = vd::fills(s);
+    CHECK(f.size() == 1 && f[0].bar == 4 && f[0].from == 3 && f[0].to == 5);
+
+    // show output is a script that changes nothing
+    auto before = N();
+    CHECK(vd::show(s).find("# bars 2-3 = bar 1") != std::string::npos);
+    vd::apply(s, vd::show(s));
+    CHECK(same(N(), before));
+
+    // an unchanged cell keeps its micro timing and exact velocity, a new cell lands on the grid
+    N()[0].tick = 7; N()[0].vel = 101;   // first note is the bar 1 hat, shown as 7
+    vd::apply(s, "bar 1 grid=16\nhh 42 |7595 9595 9595 9595|\nkick 36 |9--9 ---- 9-9- 9---|\n");
+    CHECK(N().size() == 86);
+    bool kept = false, added = false;
+    for (auto& n : N()) { kept |= n.pitch == 42 && n.tick == 7 && n.vel == 101; added |= n.pitch == 36 && n.tick == 3 * 480 && n.vel == 127; }
+    CHECK(kept && added);
+
+    // bulk op on the detected fill touches only what the selector names
+    vd::apply(s, "vel fills lanes=tom set=120\n");
+    CHECK(count(s, 43, 50, 120) == 6 && count(s, 42, 42, 70) == 8 * 3 + 4);
+
+    // copy tiles a lane, a bad row rejects the whole script
+    vd::apply(s, "copy from=4 to=2 lanes=tom\n");
+    CHECK(count(s, 43, 50) == 12);
+    before = N();
+    try { vd::apply(s, "delete bars=1\nbar 1 grid=16\nkick 36 |9--9|\n"); CHECK(false); } catch (std::runtime_error&) {}
+    CHECK(same(N(), before));
+
+    // a pitched track becomes the riff row, and kicks on its onsets read as full lock
+    vd::Track g; g.name = "Guitar";
+    for (int t : {0, 360, 960, 1200, 1440}) g.notes.push_back({t, 100, 40, 100, 0});
+    s.tracks.push_back(g);
+    vd::pickParts(s);
+    CHECK(s.drumTrack == 1 && s.riffTrack == 2);
+    CHECK(vd::show(s).find("# riff") != std::string::npos && vd::sections(s)[0].lock == 1);
+
+    puts("selfcheck ok");
+    return 0;
+}
+
+int main(int argc, char** argv) {
+    Args a; std::string cmd = argc > 1 ? argv[1] : "";
+    for (int i = 2; i < argc; i++) {
+        std::string x = argv[i];
+        if (x == "--summary" || x == "--loop" || x == "--drums-only") a.opt[x.substr(2)] = "1";
+        else if (x.rfind("--", 0) == 0 && i + 1 < argc) a.opt[x.substr(2)] = argv[++i];
+        else if (x == "-o" && i + 1 < argc) a.opt["o"] = argv[++i];
+        else a.pos.push_back(x);
+    }
+    auto opt = [&](const char* k, const char* def) { return a.opt.count(k) ? a.opt[k] : std::string(def); };
+    try {
+        int from, to; barRange(a, from, to);
+        if (cmd == "show") std::cout << vd::show(load(a), from, to, a.opt.count("summary"));
+        else if (cmd == "apply") {
+            if (a.pos.size() < 2 || !a.opt.count("o")) throw std::runtime_error("usage: vibedrum apply in.mid edits.txt -o out.mid");
+            auto s = load(a); auto script = slurp(a.pos[1]);
+            std::cout << vd::apply(s, {script.begin(), script.end()});
+            auto bytes = vd::writeMidi(s);
+            std::ofstream(a.opt["o"], std::ios::binary).write((const char*)bytes.data(), bytes.size());
+        } else if (cmd == "play") return play(load(a), from, to, a.opt.count("loop"), a.opt.count("drums-only"), atof(opt("gain", "1").c_str()));
+        else if (cmd == "new") {
+            if (a.pos.empty()) throw std::runtime_error("usage: vibedrum new out.mid [--bars 16] [--bpm 140] [--sig 4/4]");
+            auto sig = opt("sig", "4/4"); auto slash = sig.find('/');
+            auto bytes = vd::writeMidi(vd::newSong(atoi(opt("bars", "16").c_str()), atof(opt("bpm", "140").c_str()), atoi(sig.c_str()), slash == sig.npos ? 4 : atoi(sig.c_str() + slash + 1)));
+            std::ofstream(a.pos[0], std::ios::binary).write((const char*)bytes.data(), bytes.size());
+        } else if (cmd == "clip") return clip(a);
+        else if (cmd == "selfcheck") return selfcheck();
+        else { fputs("usage: vibedrum show|apply|play|clip|new|selfcheck ...   see docs/FORMAT.md\n", stderr); return 2; }
+    } catch (std::exception& e) {
+        fprintf(stderr, "vibedrum: %s\n", e.what());
+        return 1;
+    }
+    return 0;
+}
