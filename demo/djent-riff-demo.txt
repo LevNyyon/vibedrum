@@ -1,0 +1,74 @@
+# Builds demo/djent-riff-demo.mid: 20 bars at 140 bpm with a guitar track, stiff on purpose.
+#   vibedrum new demo/djent-riff-demo.mid --bars 20 --bpm 140
+#   vibedrum apply demo/djent-riff-demo.mid demo/djent-riff-demo.txt -o demo/djent-riff-demo.mid
+#   python3 tools/add_riff.py demo/djent-riff-demo.mid demo/djent-riff-demo.mid
+
+# bars 1-4, intro: ride quarters, half time, sparse kick
+bar 1 grid=16
+crash1 49 |9--- ---- ---- ----|
+ride 51   |---- 7--- 7--- 7---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9--- --9- ---- 9---|
+bar 2 grid=16
+ride 51   |7--- 7--- 7--- 7---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9--9 ---- ---- 9-9-|
+copy from=2 to=3
+bar 4 grid=16
+ride 51   |7--- 7--- ---- ----|
+snare 38  |---- ---- 9-7- 7-7-|
+kick 36   |9--9 ---- ---- ----|
+
+# bars 5-12, verse: open hat quarters, half time, syncopated sixteenth kick
+bar 5 grid=16
+crash2 57  |9--- ---- ---- ----|
+hh_open 46 |---- 7--- 7--- 7---|
+snare 38   |---- ---- 9--- ----|
+kick 36    |9-9- -99- -9-9 -99-|
+bar 6 grid=16
+hh_open 46 |7--- 7--- 7--- 7---|
+snare 38   |---- ---- 9--- ----|
+kick 36    |99-9 -9-- -99- 9-9-|
+copy from=5-6 to=7-12
+delete bars=7,9,11 lanes=crash2
+bar 7 grid=16
+hh_open 46 |7--- 7--- 7--- 7---|
+copy from=7 to=9,11 lanes=hh_open
+bar 8 grid=16
+hh_open 46 |7--- 7--- 7--- ----|
+snare 38   |---- ---- 9--- 77--|
+tom3 47    |---- ---- ---- --77|
+bar 12 grid=16
+hh_open 46 |7--- 7--- ---- ----|
+snare 38   |---- ---- 7777 ----|
+tom1 50    |---- ---- ---- 77--|
+tom3 47    |---- ---- ---- --7-|
+tom5 43    |---- ---- ---- ---7|
+kick 36    |99-9 -9-- ---- ----|
+
+# bars 13-20, breakdown: china quarters, half time, chugging kick with thirty-second bursts
+bar 13 grid=32
+crash1 49 |9------- -------- -------- --------|
+china 52  |-------- 9------- 9------- 9-------|
+snare 38  |-------- -------- 9------- --------|
+kick 36   |9-9---9- 9-----99 --9-9--- 9999--9-|
+bar 14 grid=16
+china 52  |9--- 9--- 9--- 9---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9-99 --9- -9-9 99--|
+copy from=13-14 to=15-20
+delete bars=15,17,19 lanes=crash1
+bar 15 grid=16
+china 52  |9--- 9--- 9--- 9---|
+copy from=15 to=17,19 lanes=china
+bar 16 grid=16
+china 52  |9--- 9--- 9--- ----|
+snare 38  |---- ---- 9--- 7-7-|
+tom5 43   |---- ---- ---- -7-7|
+bar 20 grid=16
+china 52  |9--- 9--- ---- ----|
+snare 38  |---- ---- 77-- ----|
+tom1 50   |---- ---- --77 ----|
+tom3 47   |---- ---- ---- 77--|
+tom5 43   |---- ---- ---- --77|
+kick 36   |9-99 --9- ---- ----|

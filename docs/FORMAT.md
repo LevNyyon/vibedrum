@@ -35,6 +35,7 @@ kick 36    |9-99 --9- 9--9 9-9-|
 - `# bar 18 = bar 17` means the bar is cell-identical to an earlier one. To edit it, write a full `bar 18 grid=G` block.
 - `show` picks the coarsest grid that holds every onset of the bar. You may write a bar at any grid.
 - `show --vel` adds a comment line of exact velocities under each row, in hit order. Use it to check fine dynamics: a digit is a band 14 wide.
+  With `--vel`, only bars with identical velocities fold into `# bar N = bar M`.
 
 ### How a bar block is applied
 
@@ -81,7 +82,7 @@ Ops, run top to bottom, each sees the result of the ones before:
 
 Fill spans and sections are computed once from the song as it was before the script.
 
-`apply` prints one line per lane: `+` notes added, `-` notes removed, `~` changes made to existing notes.
+`apply` prints one line per lane: `+` notes added, `-` notes removed, `~` changes made to existing notes, then `notes: before -> after`.
 A note changed by three ops counts three times. A remap shows as `-1` on the old lane and `+1` on the new one.
 The song cannot grow: there is no op that adds a bar, changes the tempo or the meter.
 
@@ -138,10 +139,29 @@ How the engine decides, so the knowledge docs can rely on it:
 - `show` prints grid=96 for the rare bar that no grid up to 48 divides.
 - A script runs strictly top to bottom, grid rows included: a `copy` placed after a bar block copies the edited bar.
 
+## diff: what an edit did, in numbers
+
+```
+vibedrum diff before.mid after.mid
+
+# diff: +0 notes, -0, 16 louder, 30 quieter, 0 moved in time
+# sections: name bars vel before -> after, notes before -> after
+#   B 9-16 vel 124.1 -> 121.4, notes 120 -> 120
+# lanes: added removed louder(avg) quieter(avg), quieter by more than 3
+#   china +0 -0 0(0) 27(-15.2), 27
+# fills (snare and tom notes): span vel before -> after, peak, last note, notes
+#   16:3-5 vel 98 -> 106.1, peak 98 -> 120, last 98 -> 108, notes 8 -> 8
+# bars changed: 8-16
+```
+
+Sections and fill spans are those of the file before the edit. Run it after every apply: it is the check behind the acceptance tests in `knowledge/editing-principles.md`.
+The example above is an edit that failed them: asked to hit harder, the section got quieter, and the last fill ends 12 under its own peak.
+
 ## CLI
 
 ```
 vibedrum show  in.mid [--bars 17-24 | --bars 4-5,12-13] [--summary] [--vel] [--map FILE] [--track N] [--riff N]
+vibedrum diff  before.mid after.mid # what the edit did, in numbers
 vibedrum json  in.mid               # drum notes at their exact ticks, rows in show order, for the UI
 vibedrum apply in.mid edits.txt -o out.mid [--map FILE] [--track N]
 vibedrum play  in.mid [--bars 17-24] [--loop] [--drums-only] [--gain 0.5]

@@ -22,9 +22,9 @@ static std::vector<uint8_t> slurp(const std::string& path) {
     return {std::istreambuf_iterator<char>(*in), {}};
 }
 
-static vd::Song load(const Args& a) {
-    if (a.pos.empty()) throw std::runtime_error("which MIDI file?");
-    auto s = vd::parseMidi(slurp(a.pos[0]));
+static vd::Song load(const Args& a, size_t which = 0) {
+    if (a.pos.size() <= which) throw std::runtime_error("which MIDI file?");
+    auto s = vd::parseMidi(slurp(a.pos[which]));
     if (a.opt.count("map")) { auto m = slurp(a.opt.at("map")); vd::loadMap(s, {m.begin(), m.end()}); }
     if (a.opt.count("track") || a.opt.count("riff"))
         vd::pickParts(s, a.opt.count("track") ? atoi(a.opt.at("track").c_str()) : -1, a.opt.count("riff") ? atoi(a.opt.at("riff").c_str()) : -1);
@@ -299,6 +299,7 @@ int main(int argc, char** argv) {
                 std::cout << vd::show(s, ranges[i].first, ranges[i].second, {a.opt.count("summary") > 0, i == 0, a.opt.count("vel") > 0});
         }
         else if (cmd == "json") std::cout << json(load(a));
+        else if (cmd == "diff") std::cout << vd::diff(load(a, 0), load(a, 1));
         else if (cmd == "apply") {
             if (a.pos.size() < 2 || !a.opt.count("o")) throw std::runtime_error("usage: vibedrum apply in.mid edits.txt -o out.mid");
             auto s = load(a); auto script = slurp(a.pos[1]);
@@ -316,7 +317,7 @@ int main(int argc, char** argv) {
             std::ofstream(a.pos[0], std::ios::binary).write((const char*)bytes.data(), bytes.size());
         } else if (cmd == "clip") return clip(a);
         else if (cmd == "selfcheck") return selfcheck();
-        else { fputs("usage: vibedrum show|json|apply|play|render|clip|new|selfcheck ...   see docs/FORMAT.md\n", stderr); return 2; }
+        else { fputs("usage: vibedrum show|json|diff|apply|play|render|clip|new|selfcheck ...   see docs/FORMAT.md\n", stderr); return 2; }
     } catch (std::exception& e) {
         fprintf(stderr, "vibedrum: %s\n", e.what());
         return 1;

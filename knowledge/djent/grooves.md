@@ -1,9 +1,10 @@
 # Djent grooves: groove vocabulary
 
-Scope: the steady groove (not fills) in djent and progressive metalcore. Positions are grid=16 cell indexes 0-15 of a 4/4 bar unless a grid is named: beat 1 = cell 0, beat 2 = 4, beat 3 = 8, beat 4 = 12. Digits: 9 = 127, 8 = 112, 7 = 98, 6 = 84, 5 = 70, 4 = 56, 3 = 42, 2 = 28. `[n]` = source list at the bottom. "unconfirmed" = working practice, no cited source.
+Scope: the steady groove (not fills) in djent and progressive metalcore. Positions are grid=16 cell indexes 0-15 of a 4/4 bar unless a grid is named: beat 1 = cell 0, beat 2 = 4, beat 3 = 8, beat 4 = 12. Digits: 9 = 127, 8 = 112, 7 = 98, 6 = 84, 5 = 70, 4 = 56, 3 = 42, 2 = 28. A written digit is exact, a shown digit is a band 14 wide (9 = 119-127): check levels with `show --vel`. `[n]` = source list at the bottom. "unconfirmed" = working practice, no cited source. `EP n` = rule n of knowledge/editing-principles.md. Every recipe here obeys it, and where a line here seems to differ the EP rule wins. Bar numbers in the examples are patterns, not ranges: map them to the file and look at what each mapped bar holds (EP 19).
 
 ## 1. Kick and riff: what `lock` means
 
+- No riff track (the header has no `# riff:` line): there is no `# riff` row and no lock column, so nothing in this section can be read or checked. Skip every step that names the riff or lock and say so in the report (EP 15). Offer `--riff N` when the file has a pitched track. Never rebuild a riff from the kick row. Treat every groove kick as locked: no kick added, moved or deleted unless he asks for exactly that.
 - Base rule: in a riff section the kick plays the cells where `# riff` has `x` and nothing else. Haake: "I only do the hits with the guitar hits" [1]. Transcription analysis agrees: the pedal bass drum doubles guitar and bass [4].
 - `lock` = riff onsets with a kick in the same cell / all riff onsets (read 85% as 0.85 if shown as a fraction). It does not count extra kicks, so read it together with kick/bar.
 
@@ -16,17 +17,21 @@ Scope: the steady groove (not fills) in djent and progressive metalcore. Positio
 | under 50% | 8+ | blast or double time under tremolo picking, or a real mismatch | compare kick row and `# riff` cell by cell before editing |
 
 - Riff rest = kick rest. Where `# riff` has 4 or more empty cells the kick row is empty too; only the cymbal anchor and the snare continue (unconfirmed, follows from [1]).
-- "Tighten the kick to the guitar": add a kick (8 or 9) on each unlocked riff onset, delete kicks with no riff onset, leave carpets and fills alone.
+- "Tighten the kick to the guitar" is a ladder: one rung per request, in the section he named (EP 1, 5).
+  1. Add a kick on each isolated unlocked riff onset: copy the bar from `show` and write `x` in the kick row under the riff `x` (`x` takes the lane's usual velocity). Default: stop here.
+  2. Only when he says "only the riff" or asks again: delete the kicks that have no riff onset. Leave carpets (kick/bar 14+) and fill spans alone, and report how many kicks went (EP 21).
 - Kick velocity in unison parts: 112-127, nearly flat. A kick lane sd of 0-8 is normal (triggered kick sound: 0-4 on riff hits, 3-6 inside runs, dynamics-and-feel.md section 1) and is not the machine gun flaw. The same sd on hats or snare is (numbers unconfirmed).
+- Kick at the ceiling (`# lanes` shows min = max = 127): it cannot be raised, so "harder" or "punchier" never comes from the kick. The lever is contrast (EP 2): the keeper around it comes down (section 4, ceiling case) and the kick row stays as it is.
 
 ## 2. Hand layer: the 4/4 anchor over a shifting riff
 
 - One hand keeps a pulse on one cymbal: quarters (cells 0 4 8 12) in the heaviest parts, eighths (even cells) for more drive. The snare stays on a fixed backbeat: beat 3 (cell 8) in the Meshuggah model [4][5], beats 2 and 4 (cells 4 12) in the programming recipes [21][22]. Guitars, bass and kick run an odd length cycle underneath [4][5][21]. Haake: a nine hit cycle repeats against an 8/8 bar "while my cymbal/hi-hat hand and the snare play a straight beat" [2]. DRUM!: cycles of 17, 23 or 34 are not odd time signatures, "it's all built around 4/4" [1].
 - Cycle arithmetic: riff cycle L sixteenths, block of N bars = 16N cells. Tile the cycle from cell 0 of the block, cut or pad the last copy so the block ends exactly, restart at the next block. Rational Gaze: 25+25+25+25+28 = 128 sixteenths = 8 bars, played twice [4], so the layers meet again at beat 64 = 16 bars [5]. New Millennium Cyanide Christ: 23 x 5 + 13 = 128 = 8 bars [23]. Periphery type recipe: a 7/8 kick bar (14 sixteenths) x 4 + 8 = 64 = 4 bars, "chop off whatever doesn't fit" [22]. Expect the full restart every 4, 8 or 16 bars.
 - Recognise it: cymbal and snare rows identical in every bar of the section; kick row different in every bar (no `# bar N = bar M` lines for 4+ bars); the kick motif reappears shifted by a constant cell count (L = distance between two motif starts, counted across barlines); at the block boundary the motif restarts on cell 0 and crash1 replaces the keeper on that cell.
-- Editing rules: never `copy` one bar of such a kick row over the others. `copy` whole blocks only (`copy from=1-8 to=9-16`). Variation requests go to the hand layer or to fills. To write one: pick L from 5, 7, 9, 11, 13, 14, 17, 23 sixteenths, tile, cut at 16N cells (P1).
-- Roles can swap: "Sometimes it's the feet doing the riff, and the hands are going straight over it", sometimes the hands do the riff [3]. Hand cycles: cymbal + kick accents every 3 sixteenths reset per bar (3+3+3+3+4, cells 0 3 6 9 12, P4), or every 3 eighths reset every 2 bars (bar 1 cells 0 6 12, bar 2 cells 2 8 14). The keeper is the tempo marker: Car Bomb's Lights Out shortens the cymbal spacing by one eighth per subsection and it is heard as a tempo change [15], so keep the keeper spacing constant inside a section unless that effect is asked for. Keep the snare on its backbeat cells so the bar stays countable (Postones on giving the listener a pulse under 5s, 7s and 9s [13], search excerpt only).
-- Left foot: hh_pedal 44 on quarters, or eighths under tricky parts [13], as a metronome under crash or china riding. Haake: "That's my solid point in a sense whenever I'm not playing both bass drums" [1]. Velocity 42-70 (unconfirmed). Only in bars where one foot can play the kick row: no kicks on adjacent cells above about 130 bpm (threshold unconfirmed).
+- Editing rules: never `copy` one bar of such a kick row over the others. `copy` whole blocks only (`copy from=1-8 to=9-16`). Variation requests go to the hand layer or to fills. In a section the request did not name, the keeper cells, the backbeat cell and the kick row do not change at all (EP 5). To write one: pick L from 5, 7, 9, 11, 13, 14, 17, 23 sixteenths, tile, cut at 16N cells (P1).
+- Roles can swap: "Sometimes it's the feet doing the riff, and the hands are going straight over it", sometimes the hands do the riff [3]. Hand cycles: cymbal + kick accents every 3 sixteenths reset per bar (3+3+3+3+4, cells 0 3 6 9 12, P4), or every 3 eighths reset every 2 bars (bar 1 cells 0 6 12, bar 2 cells 2 8 14). Keep the snare on its backbeat cells so the bar stays countable (Postones on giving the listener a pulse under 5s, 7s and 9s [13], search excerpt only).
+- The keeper is the tempo marker: Car Bomb's Lights Out shortens the cymbal spacing by one eighth per subsection and it is heard as a tempo change [15]. So the keeper spacing stays constant inside a section. Thinning it in half a section (quarters to half notes from bar 5 on) was heard in the trial as notes gone missing, not as weight: change the spacing only when he asks for that effect, for the whole section, and never so that a bar (look at the fill bars) keeps fewer than 2 keeper hits.
+- Left foot: hh_pedal 44 on quarters, or eighths under tricky parts [13], as a metronome under crash or china riding. Haake: "That's my solid point in a sense whenever I'm not playing both bass drums" [1]. Velocity 42-70 (unconfirmed). It adds notes: write it when he asks for the foot or in a bar you write new, never as a part of "more alive" or "heavier" (EP 5, 21). Only in bars where one foot can play the kick row: no kicks on adjacent cells above about 130 bpm (threshold unconfirmed).
 
 ## 3. Snare placement and feel
 
@@ -39,58 +44,89 @@ Scope: the steady groove (not fills) in djent and progressive metalcore. Positio
 | open | none | | intros, build-ups, the bar before a drop |
 | other | snare is part of the odd cycle | | Haake's "pattern of snare and kick" cycles [2]. Keep it, do not move it to cell 8 |
 
-- Sources disagree on blast snare velocity: 105-115 against a 125 backbeat [8], alternating 115 and 125 [20], or 125-127 so it cuts through [9]. Default 105-115 (digit 8 plus `humanize vel=5`). Go to 9 only when the user asks for the blast to cut.
-- Section lift with no bpm change: half to normal doubles the felt tempo ("more driving"), normal to half halves it ("heavier, slower") (unconfirmed, practice).
-- In a groove the snare lane has two zones only: backbeats 112-127 and ghosts 20-50 [7][8] (40-70 in [20]). Values 75-105 belong to fills, crescendos and blasts (unconfirmed, practice).
+- Sources disagree on blast snare velocity: 105-115 against a 125 backbeat [8], alternating 115 and 125 [20], or 125-127 so it cuts through [9]. Default 105-115: digit 8 plus `humanize vel=5`, with the pulse (one digit of difference) in the cymbal row, as in P9. Go to 9 only when the user asks for the blast to cut.
+- A feel change moves the backbeat, so it needs a feel word from him (half time, double time, blast) and stays inside the section he named (EP 5). With no bpm change, half to normal doubles the felt tempo ("more driving"), normal to half halves it ("heavier, slower") (unconfirmed, practice).
+- In a groove the snare lane has two zones only: backbeats 112-127 and ghosts 20-50 [7][8] (40-70 in [20]). Values 75-105 belong to fills, crescendos and blasts (unconfirmed, practice). The gap between the zones is a wall (EP 9), and `show` reads a snare of 60 or more as a backbeat. After any scale or humanize on ghosts clamp them: `vel bars=A-B lanes=38 v=1-70 max=58`, with fill bars kept out of A-B. `lanes=snare` also takes rim, ghosts and fill notes: name 38 and a `v=` band (EP 14).
+- Backbeats already at 120-127: a "harder snare" is contrast, not level (EP 2). Ghosts down or out, keeper down (section 4, ceiling case).
 
 ## 4. Which cymbal keeps time
 
 | keeper | lane | usual cells | velocity | signals |
 |---|---|---|---|---|
-| closed hat | hh 42 | eighths or sixteenths | about 110 on the beat, 95 between [7]. Working ranges 105-115 and 85-100, sixteenth "e" and "a" 70-85 | tight, quiet: verses, clean parts, ghost note grooves |
-| loose hat | hh_open 46 | quarters or eighths | 95-115 | heavy verse, pre-chorus. Haake keeps an "open trashy hi-hat" [1] |
+| closed hat | hh 42 | eighths or sixteenths | about 110 on the beat, 95 between [7]. Working ranges: shoulder 105-118 on the beat, tip 80-97 between, sixteenth "e" and "a" 70-85. 100 is the wall between shoulder and tip (dynamics-and-feel.md section 3) | tight, quiet: verses, clean parts, ghost note grooves |
+| loose hat | hh_open 46 | quarters or eighths | 90-118 | heavy verse, pre-chorus. Haake keeps an "open trashy hi-hat" [1] |
 | ride | ride 51 | eighths | 85-112 | clean or ambient passages, bridges |
 | ride bell | ride_bell 53 | quarters or offbeat eighths (cells 2 6 10 14) | 105-120 | melodic chorus, solo backing, cuts through distortion |
-| crash riding | crash1 49, crash2 57 | quarters or eighths | 105-127, offbeat eighths about 98 | chorus, climax, widest wash |
-| china | china 52 | quarters | 110-127 | heaviest half time riffs and breakdowns: trashy, short sustain, accent role [19]. Haake: no ride, "just big crashes and Chinas" [3] |
+| crash riding | crash1 49, crash2 57 | quarters or eighths | 105-120, offbeat eighths about 98, 127 on the section start only | chorus, climax, widest wash |
+| china | china 52 | quarters | 105-120, 127 on a phrase start only | heaviest half time riffs and breakdowns: trashy, short sustain, accent role [19]. Haake: no ride, "just big crashes and Chinas" [3] |
 | stack | no built in lane: splash 55 as stand in, or a custom map lane named stack | sixteenth figures, odd groupings, accents with the kick | 90-115 | short dry hit for fast articulate patterns. Halpern's signature stack: 17 inch crash on top of an 18 inch china [18] |
 | foot hat | hh_pedal 44 | quarters | 42-70 | metronome under crash or china riding [1][13] |
 
-- Intensity ladder for "heavier" and "calmer" requests: hh, hh_open, crash riding, china. Side steps: ride replaces hh in clean or ambient parts, ride_bell is the melodic option next to crash riding. Move one or two steps with `remap bars=A-B lanes=hh to=china`, then clamp into the target row's range with `vel bars=A-B lanes=china min=112`. Eighths that must become quarters: after the remap run `delete bars=A-B lanes=china beats=1.5-2`, then the same with `2.5-3`, `3.5-4`, `4.5-5` (ladder order and velocity ranges without a source number are unconfirmed).
-- One keeper per section. Change it on a section boundary and mark the boundary with crash1 + kick on cell 0.
+- Closed hat digits: 8 on the beat, 6 or 5 between. Digit 7 (98) sits on the wall at 100, so a closed hat written at 7 needs `vel bars=A-B lanes=42 v=90-104 max=99` after `humanize` (EP 9, P10).
+- Keeper ladder for "heavier" (one rung up) and "calmer" (one rung down): hh 42, hh_open 46, crash riding 49, china 52. Side steps: ride 51 for hh in clean or ambient parts, ride_bell 53 as the melodic option next to crash riding (ladder order and velocity ranges without a source number are unconfirmed). It is a ladder, not a list (EP 1):
+  1. One rung per request, in the section he named and nowhere else (EP 5). He can say "more".
+  2. Never onto the keeper of the next section: its entrance has to stay new (EP 4). Not onto a cymbal lane with count 0 in `# lanes`, which may be silent in his kit: take the nearest rung that has notes, or use it and say so (EP 18). hh_open 46 and hh_pedal 44 are articulations of a hat he already has.
+  3. Remap by pitch. Cells and rate stay. Fill bars inside the range keep their fill: only the keeper pitch moves.
+  4. The remap carries the old velocities over. Row already shaped (two or more digits in `show`): move it into the new row's range with `vel ... scale=` or `add=`, never with `min=` or `set=`, which flatten (EP 7), and add nothing else. Row flat: write the new row's shape with `accent` (`8-7-` on eighths, `8-6-` on a closed hat), `humanize` at or under half the accent gap (EP 12), then one push of 14 on the last "and" of every second bar, so the row is a 2 bar phrase and not a one beat loop (EP 8). A bar whose fill covers that cell has no keeper note there and stays as it is.
+  5. Onto china, eighths become quarters: `delete bars=A-B beats=1.5-2 lanes=52`, then the same with `2.5-3`, `3.5-4`, `4.5-5` (sixteenth hats: `1.25-2` and so on). A quarter row has no accent gap: bring flat notes to about 112 with `vel ... v=98 add=14` (`v=` is their old value, so a 127 already in the lane is not touched), `humanize vel=5`, then the phrase starts as in the ceiling case below. Report the rate change.
+
+```vd
+# heavier keeper, one rung, section in bars 1-8: closed hat 42 to loose hat 46. The row was flat (sd 0), so its shape is written
+remap bars=1-8 lanes=42 to=hh_open
+accent bars=1-8 lanes=46 grid=16 pattern=8-7-
+humanize bars=1-8 lanes=46 vel=5 time=3 seed=4
+vel bars=2,4,6,8 beats=4.5-5 lanes=46 add=14
+```
+
+  On the demo (`show --vel`): 107-117 on the beat, 93-102 between, the push at 108 and 111 (bars 2 and 6 print `8-8-` on beat 4, bars 4 and 8 have their fill there), lane sd 7.5, every fill, kick, backbeat and crash as before. `# sections` still prints keeper `hh` (all hat lanes count as hh): the move shows in `# lanes`.
+- Ceiling case (EP 2): the section already rides china or crash and `# lanes` shows that lane at min = max = 127. No rung is left and nothing can be raised. The one step is contrast: keeper down 15, each phrase start (cell 0 of bars 1, 5, 9 counted from the section start) left at full, kick and backbeat untouched. `set=` is safe here because it writes one note, after `humanize` (EP 11). Crash keeper: the same lines on 49, the last one on `bars=1,5`. `# lanes` is song wide, so confirm the 127s of the section with `show --vel`.
+
+```vd
+# keeper china 52 flat at 127 in bars 1-8: quarters down to about 112, the bar 5 phrase start back at 127. Bar 1 starts on the crash, which stays
+vel bars=1-8 lanes=52 add=-15
+humanize bars=1-8 lanes=52 vel=5 time=2 seed=2
+vel bars=5 beats=1-1.25 lanes=52 set=127
+```
+
+  On the demo: quarters 107-116, phrase start 127 (11 above the loudest quarter), lane sd 4, crash1 + kick on the section start still the biggest hit.
+- One keeper per section. Change it on a section boundary and mark the boundary with crash1 + kick on cell 0. One crash: a two cymbal stack is for a section start only, and no landing inside a section outweighs that section's entrance or the first hit of the song (EP 4).
 - One right hand: never two keepers on the same cell (china + closed hat). hh_pedal is a foot and may coexist.
 
 ## 5. Ghost notes and linear playing
 
 - Ghost = snare at 20-50 (digits 2, 3) between backbeats [7][8]. Placements from [16]: the "a" of beats 2 and 4 (cells 7 and 15), so the ghost leads into the kick on the next beat. Then the last grid=32 cell before that beat, then two grid=32 cells (a drag). Also used: the cell before or after a backbeat (3, 5, 11, 13) (unconfirmed).
 - The left hand plays them, "using the left hand to fill in the gaps of a beat with ghost notes" [13]: never on a backbeat cell, best on cells with no kick, 2-5 per bar (count unconfirmed).
-- Where: hat or ride sections in Periphery, TesseracT, Animals as Leaders type songs. Haake: ghost notes "just get lost in the mix and only the big hits come out" [3], so under china or crash riding raise them to 40-58 (digits 3-4; [20] goes up to 70, but `show` counts a snare of 60 or more as a backbeat) or leave them out.
+- Adding ghosts is a ladder (EP 1): first cells 7 and 15 at digit 2 or 3, only where no kick sits, and not the same cells in every bar: leave one out or move one in every second bar (EP 8). The drag and a third ghost wait until he says "more". Ghosts are added notes: say so in the report (EP 21).
+- Where: hat or ride sections in Periphery, TesseracT, Animals as Leaders type songs. Haake: ghost notes "just get lost in the mix and only the big hits come out" [3], so under china or crash riding raise them to 40-58 (digits 3-4; [20] goes up to 70, but 60 is the wall of section 3) or leave them out.
 - Linear = no cell has two limbs. Check each column: at most one of kick, snare, hat or cymbal. The hat row has holes exactly where kick or snare play (P3 bar 2).
 - Garstka splits riff accents between snare and kick because "you don't get dynamics with bass drums" [14], for example one snare then four kicks (Ka$cade intro) [14]. For a riff group of 5 onsets: snare 9 on the first, kick on the other 4. This lowers `lock` on purpose.
-- Writing a linear bar: 1. kick on the riff onsets. 2. snare 9 on the backbeat cells. 3. hat at 84-112 on the remaining cells, loudest on beats (empty cells are allowed). 4. swap 2-3 hat cells next to backbeats for ghosts at 2 or 3.
+- Writing a linear bar: 1. kick on the riff onsets. 2. snare 9 on the backbeat cells. 3. hat on the remaining cells: 8 on a beat, 6 on an "and", 5 on "e" and "a" (empty cells are allowed). 4. swap 2-3 hat cells next to backbeats for ghosts at 2 or 3.
 
 ## 6. Double kick vocabulary
 
 | type | grid signature | velocity | use |
 |---|---|---|---|
-| steady sixteenths | grid=16, all 16 cells | 98-127, leading foot (even cells) 5-15 above the other | under sustained chords, choruses, tremolo riffs |
+| steady sixteenths | grid=16, all 16 cells | 98-127, leading foot (even cells) 10-15 above the other | under sustained chords, choruses, tremolo riffs |
 | thirty-second burst | grid=32, 2-8 adjacent cells | first note highest [11], then leading foot 112, other foot 98 | last beat or half beat before a snare or crash, or wherever the riff does it |
 | herta | grid=32, `xxx-x-` every 6 cells (3 sixteenths) | 112-127 | Bleed: "two 32nd notes coming in every 3rd 16th note", hands in half time eighths [6] |
 | gallop | grid=16, `x-xx` per beat, reverse `xx-x` | 112-127 | galloped palm mutes |
 | eighth triplets | grid=12, up to 3 cells per beat | 112-127 | triplet riffs, 12/8 type sections |
 | sextuplets | grid=24, 6 adjacent cells per beat | 98-115 | runs of 1-2 beats under a steady hand pattern |
 
-- The velocity numbers in this table are unconfirmed; only the shapes carry a source. Weak side lower by 5-25 is the guide rule for hands [10], applied here to the feet.
+- The velocity numbers in this table are unconfirmed; only the shapes carry a source. Weak side lower by 5-25 is the guide rule for hands [10], applied here to the feet from 10 up: a gap under 10 is not heard (EP 12).
+- Any of these types put into his kick row is added notes: only when he asks for double kick, one type per request, in the named section, and never into the rests of a unison riff (section 1, EP 1, 5).
 - Speed check: note spacing in ms = 60000 / bpm / notes per beat. Thirty-seconds at 115 bpm (Bleed [6]) = sixteenths at 230 bpm = 65 ms. A full bar of kicks closer than 65 ms (grid=32 above 115 bpm, grid=24 above 155 bpm) is extreme metal speed: in this style cut it into bursts or a herta (limit unconfirmed).
 - The descending shape 84, 70, 59, 44 in [11] is for a natural kit. A metal kick loses its click that low: first note 112-127, the rest 98-112 (P8) (unconfirmed).
-- Garstka: top speed = the speed where the sound stays even and powerful [14]. `humanize vel` above 8 on a fast kick run sounds like a weak player, not a human one (unconfirmed).
+- Garstka: top speed = the speed where the sound stays even and powerful [14]. `humanize vel` above 7, half the gap between the feet (EP 12), on a fast kick run sounds like a weak player, not a human one (unconfirmed).
 
 ## 7. Tempo and subdivision
 
 - File tempos cluster near 90, 120 and 140 bpm [17]. A riff at 140-155 is usually played half time, felt at 70-78 [17]. The same music can be notated slow: the Periphery type recipe is written at 80 bpm with the snare on 2 and 4 [22], which the header reports as feel `normal`. So 70-100 bpm + feel normal + kick detail at grid=32 = half time at double the tempo: apply the half time rules. Reference points: Bleed 115 [6]. Haake's comfort zone 140, awkward at 160-180, obZen title track 170 [1][2]. Blast = sixteenths at 180-280 bpm, 250 the usual ceiling [12], which in a 90-140 bpm file is grid=32.
 - Grid by content: grid=16 default. grid=32 for bursts, herta, blasts. grid=12 or 24 when the riff is in triplets. A bar that `show` prints at grid=48 mixes thirty-seconds and triplets.
+- Changing the grid of a bar that has notes: a hit written on a cell that already holds a note keeps that note at its old tick. Triplets written over sixteenths (or back) therefore stay straight: first `delete bars=N lanes=36` for each lane you rewrite, then the bar block. Sixteenths to grid=32 needs no delete (checked on the demo).
 - Cell length: sixteenth = 15000 / bpm ms (125 ms at 120 bpm, 107 ms at 140). Ticks = ms x bpm x PPQ / 60000. At 480 PPQ that is ms x bpm / 125, so one tick is about 1 ms between 100 and 140 bpm (5 ms at 140 bpm = 5.6 ticks). At 960 PPQ double the ticks.
-- Micro timing: guides quantize to 85-95% instead of 100% [8][9][20], nudge single hits "a few milliseconds" [7][9], or humanise timing by 2-5% [10]. The engine has no quantize op: use `humanize time=N` (ticks), hands 2-5, and no `time=` at all on a kick that doubles the riff (values unconfirmed). A snare hit a few ms early in a fill = urgency, a kick a few ms late = laid back pocket [9]: `shift lanes=snare ticks=-3` on the chosen span, `shift lanes=kick ticks=3` only where the kick is not in unison with the riff.
+- Micro timing: guides quantize to 85-95% instead of 100% [8][9][20], nudge single hits "a few milliseconds" [7][9], or humanise timing by 2-5% [10]. The engine has no quantize op: use `humanize time=N` (ticks) on hand lanes, 2-5, and no `time=` at all on a kick that doubles the riff (values unconfirmed). That spread only breaks sample exact stacking. Under about 5 ms nobody hears it as feel (trial finding): never report it as a gesture.
+- A timing feel he asks for is a constant `shift` of about 5 ms, 6 ticks at 130-140 bpm (unconfirmed): a snare early in a fill = urgency, a kick late = laid back pocket [9]. `shift bars=A beats=F-T lanes=38 ticks=-6` on the chosen span, `shift bars=A-B lanes=36 ticks=6` only where the kick is not in unison with the riff. `shift` has no bar line guard: never move a note on cell 0 earlier.
 
 ## 8. Recognise the type in the grid
 
@@ -108,55 +144,61 @@ Scope: the steady groove (not fills) in djent and progressive metalcore. Positio
 | blast | feel blast | snare on every other cell, kick between them, on all cells or on the same cells |
 | half time written slow | 70-100 bpm, feel normal, bars printed at grid=32 | snare on cells 8 and 24 of grid=32, kick detail in thirty-seconds: same music as feel half at double the bpm |
 
+- No riff track: the lock conditions of this table cannot be read. Decide from the other signs and say that lock was not available (EP 15).
+- `# fills:` is fooled by a groove change: a bar with new ghosts, a blast or a double time burst has 2 more snare hits in a beat than its section usually has, so it is listed as a candidate (seen on the demo with P3 and P9). It is not a fill: keep the `fills` selector off it (fills.md section 2).
+
 ## 9. Canonical patterns
 
-Writing any bar: 1. kick = `# riff` onsets (unison) or a type from section 6. 2. snare per the feel table at 9. 3. one keeper from section 4; cell 0 of a section's first bar is crash1 9 + kick. 4. limb check per cell: at most 2 hand hits plus kick plus hh_pedal. 5. a timekeeping row in eighths or faster never keeps one digit for a whole bar. Quarter cymbals take 9 on beat 1 and 8 or 9 on the others. Backbeats and unison accents may stay 9. Blast rows are one digit plus `humanize vel`. 6. `humanize` hands vel=5-8 time=2-5, kick vel=3 and no time= (ticks at 480 PPQ, section 7).
+Writing any bar: 1. kick = `# riff` onsets (unison) or a type from section 6. No riff track: his kick row stays. 2. snare per the feel table at 9. 3. one keeper from section 4. Cell 0 of a section's first bar is crash1 9 + kick, with the keeper blank on that cell. 4. limb check per cell: at most 2 hand hits plus kick plus hh_pedal, and look one cell back: a hand does not cross the kit in one sixteenth at speed (EP 10). 5. shape in the digits: a timekeeping row in eighths or faster never keeps one digit for a whole bar. Closed hat: 8 on the beat, 6 or 5 between. Quarter cymbals: 8, and 9 only where a section or phrase starts (those starts give the lane its spread, sd about 4 over a section, so 2 bars alone read lower). Backbeats and unison kick accents may stay 9. Blast snare: one digit. 6. op order (EP 11): bar blocks, `copy`, `remap`, `delete`, then level (`vel`), then shape over the whole range (`accent`: at mix 1 it writes exact values and would erase a `humanize` run before it, while an `accent` on single bars is a gesture and goes after), then `humanize` at or under half the smallest designed gap (hands vel=4-6 time=2-4, kick vel=3 and no time=, ticks at 480 PPQ), then gestures on single bars or cells, each 10 or more (EP 12), then wall clamps (EP 9).
+
+Pasting a pattern into a song (EP 19): rows you do not write stay, so blank the old keeper with a row of `-`. A bar that holds a fill keeps its fill span. A pattern at another grid than the bar: `delete` the rewritten lanes first (section 7). A lane the kit lacks: ladder rule 2 of section 4. All ten were applied to the demo and read back with `show --vel`.
 
 ```vd
-# P1 half time polymeter. China quarters and snare on 3 fixed, kick cycle of 7 sixteenths (9-98-9-) cut at the end of bar 2. Main riffs, Meshuggah type
+# P1 half time polymeter. China quarters and snare on 3 fixed, kick cycle of 7 sixteenths (9-98-9-) cut at the end of bar 2. China at 8: the 9 belongs to the phrase start, here the crash. Main riffs, Meshuggah type
 bar 1 grid=16
 crash1 49  |9--- ---- ---- ----|
-china 52   |---- 8--- 9--- 8---|
+china 52   |---- 8--- 8--- 8---|
 snare 38   |---- ---- 9--- ----|
 kick 36    |9-98 -9-9 -98- 9-9-|
 bar 2 grid=16
-china 52   |9--- 8--- 9--- 8---|
+china 52   |8--- 8--- 8--- 8---|
 snare 38   |---- ---- 9--- ----|
 kick 36    |98-9 -9-9 8-9- 9-98|
+humanize bars=1-2 lanes=52 vel=5 time=2 seed=1
 ```
 
 ```vd
-# P2 herta kick cycle at grid=32: 6 cells (989-9-) = 3 sixteenths, hands play half time eighths. Bleed type, about 115 bpm
+# P2 herta kick cycle at grid=32: 6 cells (989-9-) = 3 sixteenths, hands play half time eighths: crash 9 on the section start only, then 8 on the beat and 7 between. Bleed type, about 115 bpm
 bar 1 grid=32
-crash1 49  |9--- 7--- 8--- 7--- 9--- 7--- 8--- 7---|
+crash1 49  |9--- 7--- 8--- 7--- 8--- 7--- 8--- 7---|
 snare 38   |---- ---- ---- ---- 9--- ---- ---- ----|
 kick 36    |989- 9-98 9-9- 989- 9-98 9-9- 989- 9-98|
 ```
 
 ```vd
-# P3 bar 1: backbeat groove with ghost notes, closed hat eighths 112/98, ghosts at 28-42 on cells with no kick. Verses, clean and groove sections
+# P3 bar 1: backbeat groove with ghost notes, closed hat eighths 112/84, ghosts at 28-42 on cells with no kick. Verses, clean and groove sections
 # P3 bar 2: linear bar, one limb per cell (here every cell is filled, rests are also allowed). Groove sections and transitions, Garstka and Halpern type
 bar 1 grid=16
-hh 42      |8-7- 8-7- 8-7- 8-7-|
+hh 42      |8-6- 8-6- 8-6- 8-6-|
 snare 38   |---- 9--2 -3-- 9--2|
 kick 36    |9--9 --9- --98 --9-|
 bar 2 grid=16
-hh 42      |-76- -7-- 8--6 --7-|
+hh 42      |-56- -5-- 8--5 --6-|
 snare 38   |---- 9--2 ---- 93--|
 kick 36    |9--9 --9- -98- ---9|
-humanize bars=1-2 lanes=hat vel=6 time=3 seed=7
+humanize bars=1-2 lanes=42 vel=5 time=3 seed=7
 ```
 
 ```vd
-# P4 breakdown where the hands join the riff: crash + kick on 3+3+3+3+4 sixteenths, snare stays on 3, kick pickup on cells 14-15. Slow breakdowns
+# P4 breakdown where the hands join the riff: crash + kick on 3+3+3+3+4 sixteenths (crash 9 on the bar start, 8 after), snare stays on 3, kick pickup on cells 14-15. Slow breakdowns
 bar 1 grid=16
-crash1 49  |9--9 --9- -9-- 9---|
+crash1 49  |9--8 --8- -8-- 8---|
 snare 38   |---- ---- 9--- ----|
 kick 36    |9--9 --9- -9-- 9-98|
 ```
 
 ```vd
-# P5 chorus carpet: crash riding quarters, normal backbeat, steady sixteenth double kick with right foot 127 and left foot 112
+# P5 chorus carpet, first bar of the section: crash riding quarters, normal backbeat, steady sixteenth double kick with right foot 127 and left foot 112. Later bars start on 8
 bar 1 grid=16
 crash1 49  |9--- 8--- 8--- 8---|
 snare 38   |---- 9--- ---- 9---|
@@ -178,29 +220,32 @@ kick 36    |98-9 98-9 98-9 98-9|
 ```vd
 # P7 triplet riffs. bar 1 grid=24 (6 cells per beat): eighth triplet kicks with sextuplet runs on beats 2 and 4. bar 2 grid=12 (3 cells per beat): triplet riff with rests
 bar 1 grid=24
-china 52   |9----- 8----- 9----- 8-----|
+china 52   |8----- 8----- 8----- 8-----|
 snare 38   |------ ------ 9----- ------|
 kick 36    |9-9-9- 878787 9-9-9- 878787|
 bar 2 grid=12
-china 52   |9-- 8-- 9-- 8--|
+china 52   |8-- 8-- 8-- 8--|
 snare 38   |--- --- 9-- ---|
 kick 36    |99- 9-9 -99 9-9|
+humanize bars=1-2 lanes=52 vel=5 time=2 seed=6
 ```
 
 ```vd
-# P8 thirty-second kick burst on beat 4 (first note 127, then 98 and 112 alternating, never 127 flat) resolving on crash + kick at the next downbeat
+# P8 thirty-second kick burst on beat 4 (first note 127, then 98 and 112 alternating, never 127 flat) resolving on one crash + kick at the next downbeat, keeper blank on that cell
 bar 1 grid=32
-china 52   |9--- ---- 8--- ---- 9--- ---- 8--- ----|
+china 52   |8--- ---- 8--- ---- 8--- ---- 8--- ----|
 snare 38   |---- ---- ---- ---- 9--- ---- ---- ----|
 kick 36    |9--- 9-9- ---- 9--- ---- 9-9- 9787 8787|
 bar 2 grid=16
 crash1 49  |9--- ---- ---- ----|
+china 52   |---- 8--- 8--- 8---|
 kick 36    |9--- ---- ---- ----|
+humanize bars=1-2 lanes=52 vel=5 time=2 seed=8
 ```
 
 ```vd
 # P9 fast feels. bar 1 double time (snare on the offbeat eighths). bar 2 traditional blast (kick + cymbal together, snare between) [12]
-# P9 bar 3: bomb blast (kick sixteenths, snare + cymbal on eighths) [12]. Blast snare at 112, not 127
+# P9 bar 3: bomb blast (kick sixteenths, snare + cymbal on eighths) [12]. Blast snare at 112, not 127. The cymbal row carries the pulse (8 on the beat, 7 between)
 # P9 bars 2-3 at grid=16 fit a file at 180+ bpm. In a 90-140 bpm file write the same alternation at grid=32 (32 cells per row)
 bar 1 grid=16
 crash1 49  |9--- 8--- 8--- 8---|
@@ -211,38 +256,42 @@ ride 51    |8-7- 8-7- 8-7- 8-7-|
 snare 38   |-8-8 -8-8 -8-8 -8-8|
 kick 36    |8-8- 8-8- 8-8- 8-8-|
 bar 3 grid=16
-china 52   |9-8- 8-8- 8-8- 8-8-|
+china 52   |9-7- 8-7- 8-7- 8-7-|
 snare 38   |8-8- 8-8- 8-8- 8-8-|
 kick 36    |8787 8787 8787 8787|
-humanize bars=2-3 lanes=snare,ride,china vel=5 time=2 seed=5
+humanize bars=2-3 lanes=38,51,52 vel=5 time=2 seed=5
 ```
 
 ```vd
-# P10 two handed sixteenth hat verse (no hat on the backbeat cells 4 and 12), written flat, then shaped: beat 112, e 84, and 98, a 84 (the two handed shape of dynamics-and-feel.md section 3), last eighth opened
+# P10 two handed sixteenth hat verse (no hat on the backbeat cells 4 and 12), written flat, then shaped: beat 112, e 84, and 98, a 84 (the two handed shape of dynamics-and-feel.md section 3), last eighth opened. The "and" at 98 sits on the wall, so the clamp comes last
 bar 1 grid=16
 hh 42      |8888 -888 8888 -8--|
 hh_open 46 |---- ---- ---- --8-|
 snare 38   |---- 9--- ---- 9---|
 kick 36    |9--- --9- -9-- ----|
 accent bars=1 lanes=42 grid=16 pattern=8676
-humanize bars=1 lanes=hat vel=5 time=2 seed=3
+humanize bars=1 lanes=42,46 vel=5 time=2 seed=3
+vel bars=1 lanes=42 v=90-104 max=99
 ```
 
 ## 10. What makes it sound programmed or wrong
 
-1. Hand lanes with sd near 0: hats, ride, ghosts, toms at one velocity. Hats need at least the 110/95 alternation [7] plus 5-10 of random spread [20].
-2. Every lane at 127. Only snare backbeats, section start crashes and unison kick accents sit at 120-127 [7][8]. [10] puts ordinary hard hits at 110-120 and [9] normal backbeats at 115-120: timekeeping cymbals in eighths or faster, fast kicks, blast snares and unaccented tom notes stay at digit 8 or lower (fill accents on toms may be 9, fills.md section 5).
-3. Kick that ignores the riff: lock under 85% in a section that is plainly a unison chug [1][4].
+Use: check the bars and lanes the edit touched, with `show --vel` (EP 20). A flaw from this list that was in his file before and lies outside the request is not fixed: name it in one line of the report (EP 5, 21).
+
+1. Hand lanes with sd near 0: hats, ride, ghosts, toms at one velocity. Hats need at least the 110/95 alternation [7]. Random spread ([20] uses 5-10) stays at or under half the accent gap, 7 for a gap of 15 (EP 12), and is not life: one beat of shape plus spread is still a one beat loop. Life is designed differences between bars (EP 8, dynamics-and-feel.md).
+2. Every lane at 127. Only snare backbeats, section start crashes, phrase start cymbals and unison kick accents sit at 120-127 [7][8]. [10] puts ordinary hard hits at 110-120 and [9] normal backbeats at 115-120: keeper cymbals, fast kicks, blast snares and unaccented tom notes stay at digit 8 or lower (fill accents on toms: fills.md section 5). A lane already at 127 that should hit harder: contrast, not level (section 4 ceiling case, EP 2).
+3. Kick that ignores the riff: lock under 85% in a section that is plainly a unison chug [1][4]. No riff track: cannot be judged, skip it and say so (EP 15).
 4. Polymeter flattened: one kick bar copied over the others where the riff cycle crosses the barline, or a cymbal anchor that drifts with the kick so the 4/4 pulse disappears [4][13].
 5. Impossible limbs: three hand hits on one cell, a keeper cymbal that continues through a two hand tom or snare run, china and closed hat on the same cell [10].
 6. One handed sixteenth hats above about 110 bpm with snare hits on hat cells. Two handed sixteenths leave the backbeat cells without a hat (P10) (bpm unconfirmed).
-7. Ghost notes at 75-100: they read as weak backbeats. Ghosts stacked on kick cells in every bar: mud (unconfirmed).
+7. Ghost notes at 60-100: `show` and the ear read them as weak backbeats. Ghosts stacked on kick cells in every bar: mud (unconfirmed).
 8. Blast snares or thirty-second kick runs at 127 flat. Blast snare 105-115 [8], burst kicks 98-112 after the first note.
 9. Any `humanize time` on the kick in unison parts: flams against the guitar. Zero timing spread on the hands for a whole song: stiff [8][9] (tick values unconfirmed).
-10. Strong and weak side identical in fast runs. Lower the weak hand by 5-25 [10], the weak foot by 5-15 (feet unconfirmed).
-11. Section change with no crash + kick on cell 0, or a crash with neither kick nor snare under it (unconfirmed, practice).
+10. Strong and weak side identical in fast runs, or closer than 10 (EP 12). Lower the weak hand by 10-25 ([10] gives 5-25), the weak foot by 10-15 (feet unconfirmed).
+11. Section change with no crash + kick on cell 0, or a crash with neither kick nor snare under it (unconfirmed, practice). The reverse too (EP 4): a two cymbal stack or a landing inside a section that outweighs the section's own entrance or the first hit of the song, or the next section's keeper sounding before its first bar.
 12. Sixteenth carpet under a clean or ambient part, or blast as the default groove (unconfirmed, practice).
-13. Keeper lane switching inside a phrase with no section change or fill (unconfirmed, practice).
+13. Keeper lane or keeper spacing switching inside a section with no section change (unconfirmed, practice).
+14. A level op that left one value: `vel min=` or `set=` over a shaped row (EP 7). Redo it with `scale=` or `add=` on the version before.
 
 ## Sources
 
