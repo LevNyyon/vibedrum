@@ -44,6 +44,7 @@
   <b>vibedrum</b>
   <span id="song"></span>
   <nav id="tabs"></nav>
+  <button class="btn" id="play" hidden>▶ Play</button>
   <span id="diff"></span>
   <span class="spacer"></span>
   <button class="btn" id="paste">Paste from clipboard</button>
@@ -84,7 +85,9 @@ async function refresh() {
   try {
     const s = await api('/api/state');
     if (s.song !== state.song || s.stamp !== state.stamp) {
+      const was = sel;
       if (s.song !== state.song || follow || !s.versions.includes(sel)) sel = s.versions.at(-1);
+      if (sel !== was) stop();
       state = s; cache = {};
       await draw();
     }
@@ -94,12 +97,12 @@ async function refresh() {
 
 async function draw() {
   const has = !!state.song;
-  $('empty').hidden = has; $('rollwrap').hidden = !has; $('legend').hidden = !has;
+  $('empty').hidden = has; $('rollwrap').hidden = !has; $('legend').hidden = !has; $('play').hidden = !has;
   $('song').textContent = state.song || '';
   $('tabs').replaceChildren(...state.versions.map(v => {
     const b = document.createElement('button');
     b.textContent = vname(v); b.className = v === sel ? 'on' : '';
-    b.onclick = () => { sel = v; follow = v === state.versions.at(-1); draw(); };
+    b.onclick = () => { sel = v; follow = v === state.versions.at(-1); stop(); draw(); };
     return b;
   }));
   if (!has) return $('diff').replaceChildren();
@@ -162,6 +165,17 @@ function roll(cur, prev, prevName) {
   $('diff').innerHTML = prev ? `<span class="add">+${add} added</span><span class="del">−${del} removed</span><span class="vel">~${vel} velocity</span><span>vs ${prevName}</span>`
                              : `<span>${cur.notes.length} notes, ${bars.length} bars</span>`;
 }
+
+// play: the selected version, rendered by the server with the same GM synth as `vibedrum play`
+// ponytail: no playhead and no loop, add when wanted
+const audio = new Audio();
+function stop() { audio.pause(); $('play').textContent = '▶ Play'; }
+$('play').onclick = () => {
+  if (!audio.paused) return stop();
+  audio.src = '/api/audio?f=' + encodeURIComponent(sel) + '&s=' + state.stamp;
+  audio.play().then(() => { $('play').textContent = '■ Stop'; msg(''); }, e => msg('Could not play: ' + e.message, true));
+};
+audio.onended = stop;
 
 // in: drop a file anywhere, or ⌘V a .mid copied in Finder (the server reads the clipboard through `vibedrum clip`)
 async function upload(f) {

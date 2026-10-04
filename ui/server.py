@@ -32,6 +32,12 @@ def versions():   # the song whose newest version is newest, and all its version
     return song, vs, max(map(mtime, vs))
 
 
+def version(query):   # ?f=<song>.v<n>.mid, only ever a file directly inside work/
+    f = parse_qs(query).get('f', [''])[0]
+    if not VER.match(f) or os.path.basename(f) != f or not os.path.isfile(os.path.join(WORK, f)): raise ValueError('no such version: ' + f)
+    return os.path.join(WORK, f)
+
+
 def save(src, name):   # copy a readable MIDI file in as work/<song>.v0.mid, the original is never touched
     vibedrum('json', src)   # raises unless the engine can read it
     os.makedirs(WORK, exist_ok=True)
@@ -57,10 +63,11 @@ class H(BaseHTTPRequestHandler):
                 song, vs, stamp = versions()
                 return self.send(200, json.dumps({'song': song, 'versions': vs, 'stamp': stamp}))
             if u.path == '/api/notes':
-                f = parse_qs(u.query).get('f', [''])[0]
-                if not VER.match(f) or os.path.basename(f) != f or not os.path.isfile(os.path.join(WORK, f)):
-                    return self.send(404, json.dumps({'error': 'no such version: ' + f}))
-                return self.send(200, vibedrum('json', os.path.join(WORK, f)))
+                return self.send(200, vibedrum('json', version(u.query)))
+            if u.path == '/api/audio':   # the version through the GM synth of `vibedrum render`, as a WAV for the page's play button
+                with tempfile.TemporaryDirectory() as t:
+                    vibedrum('render', version(u.query), '-o', os.path.join(t, 'a.wav'))
+                    with open(os.path.join(t, 'a.wav'), 'rb') as w: return self.send(200, w.read(), 'audio/wav')
             self.send(404, json.dumps({'error': 'not found'}))
         except ValueError as e:
             self.send(400, json.dumps({'error': str(e)}))
