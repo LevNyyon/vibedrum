@@ -124,15 +124,15 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 
 - Without a riff track there is no `# riff` line, no riff row and no lock column. Rules about lock then do not apply: say so instead of guessing.
 
-- keeper: the cymbal family that keeps time in the section (hh, ride, china, crash1, ...).
-- feel: `normal` (snare on 2 and 4), `half` (snare on 3), `double` (snare on every offbeat eighth), `blast`, `open` (no snare), `odd` (not 4/4), `other`.
+- keeper: the cymbal family that keeps time in the section (hh, hh_open, ride, china, crash1, ...), `none` when no cymbal does (a tom groove, a stop).
+- feel: `normal` (snare on 2 and 4), `half` (snare on 3), `double` (snare on every offbeat eighth), `blast` (8 or more snare hits in the bar), `open` (no snare), `empty` (no drums), `odd` (not 4/4), `other`.
 - lock: share of riff onsets that land together with a kick.
 - Sections and fills are heuristics. They are candidates, the reader of the grid has the last word.
 
 How the engine decides, so the knowledge docs can rely on it:
 
 - Tolerance: a note up to ppq/24 ticks early or late (20 at 480 ppq) still belongs to its grid line, its bar and its `beats=` window.
-- keeper: the cymbal family with the most hits in the bar, 2 at least. All hh lanes count as `hh`, all ride lanes as `ride`.
+- keeper: the cymbal family with the most hits in the bar, 2 at least. Closed and pedal hat lanes count as `hh`, open hat lanes as `hh_open`, all ride lanes as `ride`. A closed hat verse and an open hat chorus are therefore two sections.
 - feel: read from snare hits of velocity 60 or more, at eighth note resolution. Quieter snare hits are ghosts and do not change the feel.
 - A section starts at a marker, a meter change, a keeper change that lasts 2 bars (3 when the keeper disappears), or a feel change that holds in 3 of the next 4 bars. Sections with the same keeper and feel share a letter.
 - A fill candidate is a beat with more tom hits than that beat usually has in its section, or at least 2 more snare hits than usual. Kick only fills, chokes, stops and unison stabs are not detected.

@@ -148,7 +148,7 @@ An analyze(const Song& s) {
         std::map<std::string, int> fam; int strong = 0, any = 0; unsigned e8 = 0;
         for (auto n : a.drum[b]) {
             auto l = lane(s, n->pitch), r = role(l);
-            if (r == "hat" || r == "ride" || r == "cym") fam[r == "hat" ? "hh" : r == "ride" ? "ride" : l]++;
+            if (r == "hat" || r == "ride" || r == "cym") fam[r == "hat" ? (l.find("open") != l.npos ? "hh_open" : "hh") : r == "ride" ? "ride" : l]++;   // open hats are their own keeper: closed verse, open chorus
             if (r == "snare") { any++; if (n->vel >= 60) { strong++; e8 |= 1u << (std::lround((n->tick - a.B[b].start) / (s.ppq / 2.0)) & 31); } }
         }
         std::string k = "none"; int kn = std::max(2, a.B[b].len / s.ppq / 2) - 1;
