@@ -1,4 +1,4 @@
-// vibedrum CLI: show, apply, play, clip, new, selfcheck. Usage and format: docs/FORMAT.md
+// vibedrum CLI: show, json, apply, play, render, clip, new, selfcheck. Usage and format: docs/FORMAT.md
 #include "vibedrum.h"
 
 #include <algorithm>
@@ -86,6 +86,99 @@ static int play(const vd::Song& s, int from, int to, bool loop, bool drumsOnly, 
 #else
     throw std::runtime_error("play is macOS only, open the MIDI file in a DAW");
 #endif
+}
+
+// render: the same General MIDI synth as play, offline into a WAV file, so a pattern can be sent and heard anywhere.
+// ponytail: stock GM kit, same ceiling as play. A sampled kit means a SoundFont or the plugin in front of a drum sampler.
+static int render(const vd::Song& s, const std::string& out, int from, int to, bool drumsOnly, double gain) {
+#ifdef __APPLE__
+    auto B = vd::bars(s);
+    if (B.empty()) throw std::runtime_error("nothing to render");
+    if (to <= 0 || to > (int)B.size()) to = B.size();
+    from = std::min(std::max(1, from), to);
+    int t0 = B[from - 1].start, t1 = B[to - 1].start + B[to - 1].len, early = s.ppq / 24;
+    auto T = vd::tempos(s);
+    auto sec = [&](int tick) {   // seconds after t0, through the tempo map
+        double us = 500000, t = 0; int at = t0;
+        for (auto& [tk, u] : T) if (tk <= t0) us = u;
+        for (auto& [tk, u] : T) { if (tk <= at) continue; if (tk >= tick) break; t += (tk - at) * us / 1e6 / s.ppq; at = tk; us = u; }
+        return t + (tick - at) * us / 1e6 / s.ppq;
+    };
+
+    AudioStreamBasicDescription fmt{44100, kAudioFormatLinearPCM, kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved, 4, 1, 4, 2, 32, 0};
+    auto frame = [&](int tick) { return std::max(0L, std::lround(sec(tick) * fmt.mSampleRate)); };
+    struct Ev { long frame; UInt8 st, d1, d2; };
+    std::vector<Ev> ev;
+    for (size_t ti = 0; ti < s.tracks.size(); ti++) {
+        for (auto& e : s.tracks[ti].events) if (e.bytes.size() == 2 && (e.bytes[0] & 0xf0) == 0xc0 && e.tick < t1) ev.push_back({frame(e.tick), e.bytes[0], e.bytes[1], 0});
+        for (auto& n : s.tracks[ti].notes) {
+            bool drum = vd::isDrum(s, ti, n);
+            if (n.tick < t0 - early || n.tick >= t1 - early || (drumsOnly && !drum)) continue;
+            auto gm = s.gm.find(n.pitch);
+            UInt8 ch = drum ? 9 : n.ch, p = drum && gm != s.gm.end() ? gm->second : n.pitch;
+            long on = frame(n.tick);
+            ev.push_back({on, UInt8(0x90 | ch), p, UInt8(std::clamp(int(n.vel * gain), 1, 127))});
+            ev.push_back({std::max(on + 1, frame(n.tick + n.dur)), UInt8(0x80 | ch), p, 0});
+        }
+    }
+    std::stable_sort(ev.begin(), ev.end(), [](const Ev& a, const Ev& b) { return a.frame < b.frame; });
+
+    AudioComponentDescription d{kAudioUnitType_MusicDevice, kAudioUnitSubType_DLSSynth, kAudioUnitManufacturer_Apple, 0, 0};
+    AudioComponent c = AudioComponentFindNext(nullptr, &d);
+    AudioUnit u;
+    if (!c || AudioComponentInstanceNew(c, &u)) throw std::runtime_error("no General MIDI synth");
+    UInt32 one = 1;
+    AudioUnitSetProperty(u, kAudioUnitProperty_OfflineRender, kAudioUnitScope_Global, 0, &one, sizeof one);
+    OSStatus err = AudioUnitSetProperty(u, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &fmt, sizeof fmt);
+    if (!err) err = AudioUnitInitialize(u);
+    if (err) throw std::runtime_error("synth setup failed, OSStatus " + std::to_string(err));
+
+    AudioStreamBasicDescription wav{fmt.mSampleRate, kAudioFormatLinearPCM, kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked, 4, 1, 4, 2, 16, 0};
+    CFURLRef url = CFURLCreateFromFileSystemRepresentation(nullptr, (const UInt8*)out.c_str(), out.size(), false);
+    ExtAudioFileRef f;
+    err = ExtAudioFileCreateWithURL(url, kAudioFileWAVEType, &wav, nullptr, kAudioFileFlags_EraseFile, &f);
+    CFRelease(url);
+    if (!err) err = ExtAudioFileSetProperty(f, kExtAudioFileProperty_ClientDataFormat, sizeof fmt, &fmt);
+    if (err) throw std::runtime_error("cannot write " + out + ", OSStatus " + std::to_string(err));
+
+    const UInt32 N = 512;
+    std::vector<float> L(N), R(N);
+    struct { UInt32 n; AudioBuffer b[2]; } abl;   // an AudioBufferList with room for two channels
+    long total = std::lround((sec(t1) + 2) * fmt.mSampleRate);   // two seconds of cymbal tail
+    size_t k = 0;
+    for (long at = 0; at < total; at += N) {
+        for (; k < ev.size() && ev[k].frame < at + N; k++) MusicDeviceMIDIEvent(u, ev[k].st, ev[k].d1, ev[k].d2, UInt32(ev[k].frame - at));
+        abl.n = 2; abl.b[0] = {1, N * 4, L.data()}; abl.b[1] = {1, N * 4, R.data()};
+        AudioTimeStamp ts{}; ts.mSampleTime = at; ts.mFlags = kAudioTimeStampSampleTimeValid;
+        AudioUnitRenderActionFlags fl = 0;
+        if ((err = AudioUnitRender(u, &fl, &ts, 0, N, (AudioBufferList*)&abl)) || (err = ExtAudioFileWrite(f, N, (AudioBufferList*)&abl)))
+            throw std::runtime_error("render failed, OSStatus " + std::to_string(err));
+    }
+    ExtAudioFileDispose(f); AudioUnitUninitialize(u); AudioComponentInstanceDispose(u);
+    printf("rendered bars %d-%d to %s, %.1f s\n", from, to, out.c_str(), total / fmt.mSampleRate);
+    return 0;
+#else
+    throw std::runtime_error("render is macOS only, open the MIDI file in a DAW");
+#endif
+}
+
+// json: the drum notes at their exact ticks, for the UI piano roll (ui/).
+static std::string json(const vd::Song& s) {
+    auto n = [](long x) { return std::to_string(x); };
+    auto close = [](std::string& o) { if (o.back() == ',') o.back() = ']'; else o += ']'; };
+    std::string o = "{\"ppq\":" + n(s.ppq) + ",\"bars\":[";
+    for (auto& b : vd::bars(s)) o += "[" + n(b.start) + "," + n(b.len) + "," + n(b.num) + "," + n(b.den) + "],";
+    close(o); o += ",\"rows\":[";
+    for (auto& [p, lane] : vd::rows(s)) {
+        std::string q;
+        for (char c : lane) { if (c == '"' || c == '\\') q += '\\'; q += c; }
+        o += "[" + n(p) + ",\"" + q + "\"],";
+    }
+    close(o); o += ",\"notes\":[";
+    for (size_t ti = 0; ti < s.tracks.size(); ti++) for (auto& x : s.tracks[ti].notes)
+        if (vd::isDrum(s, ti, x)) o += "[" + n(x.tick) + "," + n(x.dur) + "," + n(x.pitch) + "," + n(x.vel) + "],";
+    close(o);
+    return o + "}\n";
 }
 
 // clip: the macOS clipboard as the way in and out. No argument: print the path of the .mid file copied in Finder.
@@ -193,6 +286,7 @@ int main(int argc, char** argv) {
     try {
         int from, to; barRange(a, from, to);
         if (cmd == "show") std::cout << vd::show(load(a), from, to, a.opt.count("summary"));
+        else if (cmd == "json") std::cout << json(load(a));
         else if (cmd == "apply") {
             if (a.pos.size() < 2 || !a.opt.count("o")) throw std::runtime_error("usage: vibedrum apply in.mid edits.txt -o out.mid");
             auto s = load(a); auto script = slurp(a.pos[1]);
@@ -200,14 +294,17 @@ int main(int argc, char** argv) {
             auto bytes = vd::writeMidi(s);
             std::ofstream(a.opt["o"], std::ios::binary).write((const char*)bytes.data(), bytes.size());
         } else if (cmd == "play") return play(load(a), from, to, a.opt.count("loop"), a.opt.count("drums-only"), atof(opt("gain", "1").c_str()));
-        else if (cmd == "new") {
+        else if (cmd == "render") {
+            if (!a.opt.count("o")) throw std::runtime_error("usage: vibedrum render in.mid -o out.wav [--bars 17-24] [--drums-only] [--gain 1]");
+            return render(load(a), a.opt["o"], from, to, a.opt.count("drums-only"), atof(opt("gain", "1").c_str()));
+        } else if (cmd == "new") {
             if (a.pos.empty()) throw std::runtime_error("usage: vibedrum new out.mid [--bars 16] [--bpm 140] [--sig 4/4]");
             auto sig = opt("sig", "4/4"); auto slash = sig.find('/');
             auto bytes = vd::writeMidi(vd::newSong(atoi(opt("bars", "16").c_str()), atof(opt("bpm", "140").c_str()), atoi(sig.c_str()), slash == sig.npos ? 4 : atoi(sig.c_str() + slash + 1)));
             std::ofstream(a.pos[0], std::ios::binary).write((const char*)bytes.data(), bytes.size());
         } else if (cmd == "clip") return clip(a);
         else if (cmd == "selfcheck") return selfcheck();
-        else { fputs("usage: vibedrum show|apply|play|clip|new|selfcheck ...   see docs/FORMAT.md\n", stderr); return 2; }
+        else { fputs("usage: vibedrum show|json|apply|play|render|clip|new|selfcheck ...   see docs/FORMAT.md\n", stderr); return 2; }
     } catch (std::exception& e) {
         fprintf(stderr, "vibedrum: %s\n", e.what());
         return 1;

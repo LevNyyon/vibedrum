@@ -7,7 +7,9 @@ Style focus: modern metal, djent.
 ## Layout
 
 - `core/`: std only C++17 library (MIDI in, analysis, grid, edit ops, MIDI out). This is what a VST3 will link. No file or audio I/O in here.
-- `cli/main.cpp`: the `vibedrum` binary (show, apply, play, clip, new, selfcheck). Playback and clipboard are macOS only and stay out of core.
+- `cli/main.cpp`: the `vibedrum` binary (show, json, apply, play, render, clip, new, selfcheck). Playback and clipboard are macOS only and stay out of core.
+- `ui/`: the local page (`python3 ui/server.py`, http://localhost:8790, launch config `vibedrum-ui`). He drops or pastes a MIDI,
+  it lands as `work/<song>.v0.mid`, and the page shows the newest version of the newest song with its changes against the one before.
 - `docs/FORMAT.md`: the grid, ops, selectors, header. Read it before writing an edit.
 - `knowledge/`: the musical knowledge. Start at `knowledge/README.md`.
 - `demo/`: a stiff 16 bar djent song to try things on.
@@ -18,7 +20,7 @@ Build and check:
 
 ## Handling a request
 
-1. Get the file: a path he gives, or `./build/vibedrum clip` (the .mid he copied in Finder).
+1. Get the file: a path he gives, `./build/vibedrum clip` (the .mid he copied in Finder), or the newest `work/<song>.v0.mid` he dropped in the UI.
 2. `vibedrum show FILE --summary`, then `show FILE --bars A-B` for the bars the request touches. Short songs: just `show FILE`.
 3. Read `knowledge/vocabulary.md` for the words of the request, then the detail doc it points to.
 4. Decide scope and interpretation yourself. The fill and section lists are candidates, check them against the grid.

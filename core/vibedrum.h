@@ -36,6 +36,7 @@ std::vector<Bar> bars(const Song&);
 std::vector<std::pair<int, int>> tempos(const Song&);     // tick, microseconds per quarter
 std::vector<Section> sections(const Song&);
 std::vector<Span> fills(const Song&);
+std::vector<std::pair<int, std::string>> rows(const Song&);   // drum pitches in use with lane names, top to bottom as show prints them
 
 std::string show(const Song&, int barFrom = 1, int barTo = 0, bool summaryOnly = false);
 std::string apply(Song&, const std::string& script);      // returns the change summary; throws with a line number and leaves the song untouched
