@@ -64,7 +64,7 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const RH = 26, SECH = 20, HEAD = 40;   // row height, title strip, title strip + bar numbers
 const key = n => n[0] + ':' + n[2], end = b => b.length ? b.at(-1)[0] + b.at(-1)[1] : 0;
-let state = { song: null, stamp: -1, versions: [] }, sel = null, follow = true, cache = {}, busy = false, msgTimer;
+let state = { song: null, stamp: -1, versions: [] }, sel = null, follow = true, cache = {}, busy = false, lost = false, msgTimer;
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
@@ -85,6 +85,7 @@ async function refresh() {
   if (busy) return; busy = true;
   try {
     const s = await api('/api/state');
+    if (lost) { lost = false; msg('Server is back'); }
     if (s.song !== state.song || s.stamp !== state.stamp) {
       const was = sel;
       if (s.song !== state.song || follow || !s.versions.includes(sel)) sel = s.versions.at(-1);
@@ -92,7 +93,10 @@ async function refresh() {
       state = s; cache = {};
       await draw();
     }
-  } catch (e) { msg(e.message, true); }
+  } catch (e) {
+    lost = e instanceof TypeError;   // fetch itself failed: the server is down, not a bad answer
+    msg(lost ? 'Lost the server. Start it again with: cd ~/vibedrum && python3 ui/server.py' : e.message, true);
+  }
   busy = false;
 }
 
