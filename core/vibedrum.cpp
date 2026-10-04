@@ -400,7 +400,7 @@ std::vector<Span> fills(const Song& s) { return analyze(s).fills; }
 
 // ---------- public: show
 
-std::string show(const Song& s, int from, int to, bool summaryOnly) {
+std::string show(const Song& s, int from, int to, ShowOpts opt) {
     An a = analyze(s);
     int nb = a.B.size();
     auto T = tempos(s);
@@ -414,6 +414,7 @@ std::string show(const Song& s, int from, int to, bool summaryOnly) {
     size_t W = 8;
     for (int p : pitches) W = std::max(W, lane(s, p).size() + 1 + std::to_string(p).size());
 
+    if (opt.header) {
     o << "# vibedrum: ppq " << s.ppq << ", " << nb << " bars, drums: track " << s.drumTrack << " \""
       << (s.drumTrack < (int)s.tracks.size() ? s.tracks[s.drumTrack].name : "") << "\", " << total << " notes\n# timesig:";
     for (int b = 0; b < nb; b++) if (!b || a.B[b].num != a.B[b - 1].num || a.B[b].den != a.B[b - 1].den) o << " " << b + 1 << ":" << a.B[b].num << "/" << a.B[b].den;
@@ -438,7 +439,7 @@ std::string show(const Song& s, int from, int to, bool summaryOnly) {
     }
     if (!unmapped.empty()) o << "# unmapped:" << unmapped << "\n";
     o << "# map:";
-    for (auto& [p, l] : s.lanes) o << " " << p << " " << l << ",";
+    for (auto& [p, l] : s.lanes) o << (p == s.lanes.begin()->first ? " " : ", ") << p << " " << l;
     o << "\n# sections: name bars keeper feel kick/bar vel" << (s.riffTrack >= 0 ? " lock" : "") << "\n";
     for (auto& sc : a.secs) {
         o << "#   " << sc.name << " " << sc.from << "-" << sc.to << " " << sc.keeper << " " << sc.feel << " " << num(std::round(sc.kicks * 10) / 10) << " " << num(std::round(sc.vel));
@@ -448,7 +449,8 @@ std::string show(const Song& s, int from, int to, bool summaryOnly) {
     o << "# fills:";
     for (auto& f : a.fills) o << " " << f.bar << ":" << num(f.from) << "-" << num(f.to);
     o << "\n";
-    if (summaryOnly) return o.str();
+    }
+    if (opt.summaryOnly) return o.str();
 
     if (to <= 0 || to > nb) to = nb;
     from = std::max(1, from);
@@ -462,7 +464,7 @@ std::string show(const Song& s, int from, int to, bool summaryOnly) {
         runFrom = 0;
     };
     for (int b = from - 1; b < to; b++) {
-        for (auto& sc : a.secs) if (sc.from == b + 1) {
+        for (auto& sc : a.secs) if (sc.from == b + 1 || (b == from - 1 && sc.from <= b + 1 && b + 1 <= sc.to)) {
             flush();
             o << "\n# --- section " << sc.name << ", bars " << sc.from << "-" << sc.to << ", keeper " << sc.keeper << ", feel " << sc.feel << "\n";
             lastGrid = 0;
@@ -510,6 +512,11 @@ std::string show(const Song& s, int from, int to, bool summaryOnly) {
         for (int p : order) {
             std::string label = lane(s, p) + " " + std::to_string(p);
             o << label << std::string(W - label.size(), ' ') << " |" << grouped(rows[p]) << "|\n";
+            if (opt.exactVel) {
+                o << "#" << std::string(W + 1, ' ');
+                for (auto nt : a.drum[b]) if (nt->pitch == p) o << nt->vel << " ";
+                o << "\n";
+            }
         }
         if (!a.riff[b].empty()) {
             std::string r(n, '-');
@@ -565,7 +572,7 @@ std::string apply(Song& song, const std::string& script) {
     };
 
     static const std::map<std::string, std::string> OPS = {
-        {"vel", "bars beats lanes v fills set scale add min max"}, {"ramp", "bars beats lanes v fills from to"},
+        {"vel", "bars beats lanes v fills set scale add min max"}, {"ramp", "bars beats lanes v fills from to scale"},
         {"accent", "bars beats lanes v fills grid pattern mix"}, {"humanize", "bars beats lanes v fills vel time seed"},
         {"shift", "bars beats lanes v fills ticks"}, {"delete", "bars beats lanes v fills"},
         {"remap", "bars beats lanes v fills to"}, {"copy", "from to lanes"},
@@ -698,11 +705,16 @@ std::string apply(Song& song, const std::string& script) {
             double set = numArg("set", -1), scale = numArg("scale", 1), add = numArg("add", 0), lo = numArg("min", 1), hi = numArg("max", 127);
             for (auto& [i, k] : hit) setVel(notes[i], std::clamp(set >= 0 ? set : notes[i].vel * scale + add, lo, std::max(lo, hi)));
         } else if (w[0] == "ramp") {
-            need("from"); need("to");
-            double v0 = numArg("from", 0), v1 = numArg("to", 0);
+            bool rel = has("scale");   // scale=A-B multiplies, so an accent shape survives the ramp
+            double v0, v1;
+            if (rel) {
+                auto dash = arg["scale"].find('-', 1);
+                if (dash == std::string::npos) fail("ramp scale= needs FROM-TO, for example scale=0.85-1.1");
+                v0 = atof(arg["scale"].c_str()); v1 = atof(arg["scale"].c_str() + dash + 1);
+            } else { need("from"); need("to"); v0 = numArg("from", 0); v1 = numArg("to", 0); }
             std::map<int, std::pair<int, int>> ext;   // span -> first and last selected tick
             for (auto& [i, k] : hit) { auto it = ext.emplace(k, std::make_pair(notes[i].tick, notes[i].tick)).first; it->second.first = std::min(it->second.first, notes[i].tick); it->second.second = std::max(it->second.second, notes[i].tick); }
-            for (auto& [i, k] : hit) { auto [a, e] = ext[k]; setVel(notes[i], e > a ? v0 + (v1 - v0) * (notes[i].tick - a) / (e - a) : v1); }
+            for (auto& [i, k] : hit) { auto [a, e] = ext[k]; double x = e > a ? v0 + (v1 - v0) * (notes[i].tick - a) / (e - a) : v1; setVel(notes[i], rel ? notes[i].vel * x : x); }
         } else if (w[0] == "accent") {
             need("pattern");
             int g = numArg("grid", 16); double mix = numArg("mix", 1); auto& pat = arg["pattern"];
@@ -720,7 +732,8 @@ std::string apply(Song& song, const std::string& script) {
             auto rnd = [&](int n) { x ^= x << 13; x ^= x >> 17; x ^= x << 5; return n > 0 ? int(x % (2 * n + 1)) - n : 0; };
             for (auto& [i, k] : hit) {
                 setVel(notes[i], notes[i].vel + rnd(dv));
-                int d = rnd(dt);
+                int d = rnd(dt), start = B[barOf(B, notes[i].tick + tol)].start;
+                if (notes[i].tick >= start) d = std::max(d, start - notes[i].tick);   // a downbeat hit never slips in front of its bar line
                 if (d) { notes[i].tick = std::max(0, notes[i].tick + d); stat[lane(s, notes[i].pitch)][2]++; }
             }
         } else if (w[0] == "shift") {
@@ -733,7 +746,7 @@ std::string apply(Song& song, const std::string& script) {
         } else if (w[0] == "remap") {
             need("to");
             int p = pitchOf(arg["to"]);
-            for (auto& [i, k] : hit) if (notes[i].pitch != p) { notes[i].pitch = p; stat[lane(s, p)][2]++; }
+            for (auto& [i, k] : hit) if (notes[i].pitch != p) { stat[lane(s, notes[i].pitch)][1]++; notes[i].pitch = p; stat[lane(s, p)][0]++; }
         }
     }
 

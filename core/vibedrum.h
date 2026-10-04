@@ -37,7 +37,8 @@ std::vector<std::pair<int, int>> tempos(const Song&);     // tick, microseconds 
 std::vector<Section> sections(const Song&);
 std::vector<Span> fills(const Song&);
 
-std::string show(const Song&, int barFrom = 1, int barTo = 0, bool summaryOnly = false);
+struct ShowOpts { bool summaryOnly = false, header = true, exactVel = false; };   // exactVel: a comment line of exact velocities under each row
+std::string show(const Song&, int barFrom = 1, int barTo = 0, ShowOpts = {});
 std::string apply(Song&, const std::string& script);      // returns the change summary; throws with a line number and leaves the song untouched
 
 }  // namespace vd

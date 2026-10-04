@@ -4,10 +4,14 @@ One text format, both directions. `vibedrum show` prints it, `vibedrum apply` re
 Everything `show` prints is a valid edit script that changes nothing, so an edit is:
 copy the bars you want, change cells, add bulk ops, apply.
 
+How to turn a request into a good edit is in `knowledge/editing-principles.md`. Every recipe in the knowledge packs follows it.
+
 ## Grid
 
 ```
-bar 17 grid=16   # 4/4 140bpm sec=B fill=3-5
+# --- section B, bars 17-24, keeper china, feel half
+
+bar 17 grid=16   # 4/4 140bpm fill=3-5
 #            1    2    3    4
 china 52   |9--- 9--- 9--- 9---|
 snare 38   |---- ---- 9--- --37|
@@ -25,9 +29,12 @@ kick 36    |9-99 --9- 9--9 9-9-|
   `x` hit that keeps its velocity (on an empty cell: the lane's typical velocity).
   Shown digit bands: 1 = 1-20, 2 = 21-34, 3 = 35-48, 4 = 49-62, 5 = 63-76, 6 = 77-90,
   7 = 91-104, 8 = 105-118, 9 = 119-127.
+- The comment after `bar N grid=G` gives meter and tempo when they change, and `fill=FROM-TO` when the bar holds a fill candidate.
+  A `# --- section` line opens each section, and each `--bars` range.
 - `# riff` is read only: onsets of the main pitched track (guitar or bass) when the file has one.
 - `# bar 18 = bar 17` means the bar is cell-identical to an earlier one. To edit it, write a full `bar 18 grid=G` block.
 - `show` picks the coarsest grid that holds every onset of the bar. You may write a bar at any grid.
+- `show --vel` adds a comment line of exact velocities under each row, in hit order. Use it to check fine dynamics: a digit is a band 14 wide.
 
 ### How a bar block is applied
 
@@ -63,15 +70,20 @@ Ops, run top to bottom, each sees the result of the ones before:
 | op | effect |
 |---|---|
 | `vel <sel> [set=N] [scale=F] [add=N] [min=N] [max=N]` | velocity = set, or v * scale + add, then clamped to min..max |
-| `ramp <sel> from=N to=N` | linear velocity ramp over time, restarted in each selected span (each fill, each beats window, each contiguous bar range) |
+| `ramp <sel> from=N to=N` | linear velocity ramp over time. The first selected note of a span gets `from`, the last gets `to`. Restarted in each selected span (each fill, each beats window, each contiguous bar range). This flattens any accent shape. |
+| `ramp <sel> scale=A-B` | the same ramp as a multiplier, for example `scale=0.85-1.1`: a crescendo that keeps the accent shape |
 | `accent <sel> grid=G pattern=9575 [mix=F]` | cyclic velocity pattern by cell position in the bar. Pattern digits as in the grid, `-` leaves a step alone. mix 0..1 blends toward the pattern (default 1). |
-| `humanize <sel> [vel=N] [time=N] [seed=N]` | random plus or minus N velocity and plus or minus N ticks, repeatable per seed. time is capped at ppq/24 (20 ticks at 480 ppq) so a note never leaves its cell. |
+| `humanize <sel> [vel=N] [time=N] [seed=N]` | random plus or minus N velocity and plus or minus N ticks, repeatable per seed. time is capped at ppq/24 (20 ticks at 480 ppq) so a note never leaves its cell, and a note on a bar line is never moved in front of it. The spread is uniform: a designed difference smaller than N is lost, so humanize first or keep N under half of it. |
 | `shift <sel> ticks=N` | move notes later (negative: earlier) |
 | `delete <sel>` | remove notes |
 | `remap <sel> to=<lane or pitch>` | change the pitch, for example closed hat to open hat |
 | `copy from=17-20 to=21-28 [lanes=...]` | replace the destination bars (those lanes) with the source bars, tiled |
 
 Fill spans and sections are computed once from the song as it was before the script.
+
+`apply` prints one line per lane: `+` notes added, `-` notes removed, `~` changes made to existing notes.
+A note changed by three ops counts three times. A remap shows as `-1` on the old lane and `+1` on the new one.
+The song cannot grow: there is no op that adds a bar, changes the tempo or the meter.
 
 ## Lanes (built in General MIDI map)
 
@@ -98,10 +110,18 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 
 ```
 # vibedrum: ppq 480, 16 bars, ...               ppq = ticks per quarter note, the unit of shift and humanize time
+# timesig: 1:4/4 17:7/8                          bar:meter, each change
+# tempo: 1:130 33:140                            bar:bpm, each change
+# markers: 1:Intro 9:Verse                       only when the file has markers. A marker names its section.
+# riff: track 2 "Guitar"                         only when the file has a pitched track
 # lanes: pitch lane count vel min/avg/max sd     how each lane is played. sd near 0 = machine gun.
+# unmapped: 27 31                                pitches the drum map has no lane for
+# map: 35 kick2, 36 kick, ...                    every lane the map offers, used or not
 # sections: name bars keeper feel kick/bar vel lock
 # fills: 8:3-5 16:1-5                            bar:fromBeat-toBeat
 ```
+
+- Without a riff track there is no `# riff` line, no riff row and no lock column. Rules about lock then do not apply: say so instead of guessing.
 
 - keeper: the cymbal family that keeps time in the section (hh, ride, china, crash1, ...).
 - feel: `normal` (snare on 2 and 4), `half` (snare on 3), `double` (snare on every offbeat eighth), `blast`, `open` (no snare), `odd` (not 4/4), `other`.
@@ -121,7 +141,7 @@ How the engine decides, so the knowledge docs can rely on it:
 ## CLI
 
 ```
-vibedrum show  in.mid [--bars 17-24] [--summary] [--map FILE] [--track N] [--riff N]
+vibedrum show  in.mid [--bars 17-24 | --bars 4-5,12-13] [--summary] [--vel] [--map FILE] [--track N] [--riff N]
 vibedrum apply in.mid edits.txt -o out.mid [--map FILE] [--track N]
 vibedrum play  in.mid [--bars 17-24] [--loop] [--drums-only] [--gain 0.5]
 vibedrum clip                 # path of the .mid file copied in Finder

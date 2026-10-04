@@ -21,13 +21,14 @@ Build and check:
 
 1. Get the file: a path he gives, or `./build/vibedrum clip` (the .mid he copied in Finder).
 2. `vibedrum show FILE --summary`, then `show FILE --bars A-B` for the bars the request touches. Short songs: just `show FILE`.
-3. Pick the genre pack (`knowledge/README.md`), read its `vocabulary.md` for the words of the request, then the detail doc it points to.
+3. Read `knowledge/editing-principles.md`. Pick the genre pack (`knowledge/README.md`), read its `vocabulary.md` for the words of the request, then the detail doc it points to.
 4. Decide scope and interpretation yourself. The fill and section lists are candidates, check them against the grid.
    State the interpretation in one line. Ask only when two readings would give clearly different music.
 5. Write the edit script to `work/<song>.<n>.txt`, apply it to `work/<song>.v<n>.mid`. Never overwrite his original.
    Each version builds on the previous one, so any step can be undone.
-6. `vibedrum clip work/<song>.v<n>.mid` so he can paste the result out. `vibedrum play ... --bars A-B` only when he asks to hear it.
-7. Report in musical terms, two or three lines: what changed and where.
+6. Check the result with `vibedrum show ... --vel` on the changed bars: every gesture you will report must be in the numbers.
+7. `vibedrum clip work/<song>.v<n>.mid` so he can paste the result out. `vibedrum play ... --bars A-B` only when he asks to hear it.
+8. Report in musical terms, two or three lines: what changed, where, and anything changed outside the scope he named.
 
 ## Rules
 

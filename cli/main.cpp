@@ -31,12 +31,18 @@ static vd::Song load(const Args& a) {
     return s;
 }
 
-static void barRange(const Args& a, int& from, int& to) {   // --bars 17-24 or --bars 17
-    from = 1; to = 0;
-    if (!a.opt.count("bars")) return;
-    auto& v = a.opt.at("bars"); auto dash = v.find('-');
-    from = to = atoi(v.c_str());
-    if (dash != v.npos) to = atoi(v.c_str() + dash + 1);
+static std::vector<std::pair<int, int>> barRanges(const Args& a) {   // --bars 17-24 or 17 or 4-5,12-13. None: the whole song.
+    std::vector<std::pair<int, int>> out;
+    std::string v = a.opt.count("bars") ? a.opt.at("bars") : "";
+    for (size_t p = 0; p < v.size();) {
+        size_t q = std::min(v.find(',', p), v.size());
+        std::string part = v.substr(p, q - p); auto dash = part.find('-');
+        int from = atoi(part.c_str()), to = dash == part.npos ? from : atoi(part.c_str() + dash + 1);
+        if (from < 1 || to < from) throw std::runtime_error("bad --bars " + part + ", use 17-24 or 4-5,12-13");
+        out.push_back({from, to}); p = q + 1;
+    }
+    if (out.empty()) out.push_back({1, 0});
+    return out;
 }
 
 // ponytail: plays through the built in macOS General MIDI synth, enough to judge a pattern.
@@ -184,15 +190,21 @@ int main(int argc, char** argv) {
     Args a; std::string cmd = argc > 1 ? argv[1] : "";
     for (int i = 2; i < argc; i++) {
         std::string x = argv[i];
-        if (x == "--summary" || x == "--loop" || x == "--drums-only") a.opt[x.substr(2)] = "1";
+        if (x == "--summary" || x == "--loop" || x == "--drums-only" || x == "--vel") a.opt[x.substr(2)] = "1";
         else if (x.rfind("--", 0) == 0 && i + 1 < argc) a.opt[x.substr(2)] = argv[++i];
         else if (x == "-o" && i + 1 < argc) a.opt["o"] = argv[++i];
         else a.pos.push_back(x);
     }
     auto opt = [&](const char* k, const char* def) { return a.opt.count(k) ? a.opt[k] : std::string(def); };
     try {
-        int from, to; barRange(a, from, to);
-        if (cmd == "show") std::cout << vd::show(load(a), from, to, a.opt.count("summary"));
+        auto ranges = barRanges(a);
+        if (ranges.size() > 1 && cmd == "play") throw std::runtime_error("play takes one bar range");
+        int from = ranges[0].first, to = ranges[0].second;
+        if (cmd == "show") {
+            auto s = load(a);
+            for (size_t i = 0; i < ranges.size(); i++)
+                std::cout << vd::show(s, ranges[i].first, ranges[i].second, {a.opt.count("summary") > 0, i == 0, a.opt.count("vel") > 0});
+        }
         else if (cmd == "apply") {
             if (a.pos.size() < 2 || !a.opt.count("o")) throw std::runtime_error("usage: vibedrum apply in.mid edits.txt -o out.mid");
             auto s = load(a); auto script = slurp(a.pos[1]);
