@@ -8,7 +8,7 @@
   :root {
     --bg: #0f1114; --panel: #171a1f; --stripe: #13161a; --line: #242931; --line2: #323944; --line3: #4c5564;
     --text: #e6e8eb; --dim: #8b929c;
-    --note: #6ea8fe; --add: #3fb950; --del: #f85149; --vel: #e3b341;
+    --note: #6ea8fe; --add: #3fb950; --del: #f85149; --vel: #e3b341; --title: rgba(110, 168, 254, .18);
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
@@ -62,7 +62,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const RH = 26, HEAD = 22;   // row height, bar number strip
+const RH = 26, SECH = 20, HEAD = 40;   // row height, title strip, title strip + bar numbers
+const key = n => n[0] + ':' + n[2], end = b => b.length ? b.at(-1)[0] + b.at(-1)[1] : 0;
 let state = { song: null, stamp: -1, versions: [] }, sel = null, follow = true, cache = {}, busy = false, msgTimer;
 
 async function api(path, opts) {
@@ -111,6 +112,21 @@ async function draw() {
   roll(cur, prev, i > 0 ? vname(state.versions[i - 1]) : null);
 }
 
+// a version that added bars: slide the previous one at the bar where it lines up best, so moved bars do not read as changed
+// ponytail: one insertion point per version, two inserts in one edit show the part after the second as moved
+function align(cur, prev) {
+  const d = end(cur.bars) - end(prev.bars), tol = cur.ppq / 24;
+  if (!d) return prev.notes;
+  const have = new Set(cur.notes.map(key));
+  let best = prev.notes, score = -1;
+  for (const at of [...prev.bars.map(b => b[0]), end(prev.bars)]) {
+    const moved = prev.notes.map(n => n[0] + tol >= at ? [n[0] + d, n[1], n[2], n[3]] : n);
+    const sc = moved.reduce((c, n) => c + have.has(key(n)), 0);
+    if (sc > score) { score = sc; best = moved; }
+  }
+  return best;
+}
+
 function roll(cur, prev, prevName) {
   const ppq = cur.ppq, six = ppq / 4;
   // lanes: this version's rows, plus any lane the previous version had and this one lost, kept beside its old neighbour
@@ -119,24 +135,32 @@ function roll(cur, prev, prevName) {
     if (rows.some(x => x[0] === r[0])) return;
     rows.splice(k ? rows.findIndex(x => x[0] === prev.rows[k - 1][0]) + 1 : 0, 0, r);
   });
-  const bars = prev && prev.bars.length > cur.bars.length ? prev.bars : cur.bars;
-  const end = bars.length ? bars.at(-1)[0] + bars.at(-1)[1] : 4 * ppq;
+  const bars = cur.bars, total = end(bars) || 4 * ppq, secs = cur.sections || [];
 
   $('labels').innerHTML = `<div style="height:${HEAD}px"></div>` + rows.map(([p, name]) => `<div>${esc(name)}<span>${p}</span></div>`).join('');
   const avail = $('rollwrap').clientWidth - $('labels').offsetWidth - 2;
-  const k = Math.max(avail / end, 180 / (4 * ppq));   // fit the song, but never squeeze a 4/4 bar under 180px
-  const W = Math.ceil(end * k), H = HEAD + Math.max(rows.length, 1) * RH;
+  const k = Math.max(avail / total, 180 / (4 * ppq));   // fit the song, but never squeeze a 4/4 bar under 180px
+  const W = Math.ceil(total * k), H = HEAD + Math.max(rows.length, 1) * RH;
   const y = {}; rows.forEach(([p], j) => y[p] = HEAD + j * RH);
 
   let s = '';
   rows.forEach((r, j) => { if (j % 2) s += `<rect x="0" y="${HEAD + j * RH}" width="${W}" height="${RH}" fill="var(--stripe)"/>`; });
+  const starts = new Set(secs.map(x => x[0] - 1));
   bars.forEach(([start, len], b) => {
     for (let t = 0; t < len; t += six) {
       const x = Math.round((start + t) * k) + .5;
-      s += `<line x1="${x}" x2="${x}" y1="${t ? HEAD : 0}" y2="${H}" stroke="var(${t === 0 ? '--line3' : t % ppq === 0 ? '--line2' : '--line'})"/>`;
+      s += `<line x1="${x}" x2="${x}" y1="${t ? HEAD : starts.has(b) ? 0 : SECH}" y2="${H}" stroke="var(${t === 0 ? '--line3' : t % ppq === 0 ? '--line2' : '--line'})"/>`;
     }
-    s += `<text x="${start * k + 5}" y="15" fill="var(--dim)" font-size="11">${b + 1}</text>`;
+    s += `<text x="${start * k + 5}" y="${SECH + 14}" fill="var(--dim)" font-size="11">${b + 1}</text>`;
   });
+  // titles: a titled section in bold over its bars, an untitled one shows the analysis letter, dim, as in `show`
+  for (const [from, to, name, titled] of secs) {
+    if (!bars[from - 1] || !bars[to - 1]) continue;
+    const x0 = bars[from - 1][0] * k, sw = (bars[to - 1][0] + bars[to - 1][1]) * k - x0;
+    s += `<svg x="${x0.toFixed(1)}" y="0" width="${sw.toFixed(1)}" height="${SECH}"><title>${esc(name)}</title>`
+       + (titled ? `<rect x="2" y="3" width="${Math.max(0, sw - 4).toFixed(1)}" height="${SECH - 5}" rx="4" fill="var(--title)"/>` : '')
+       + `<text x="8" y="${SECH - 6}" font-size="11" ${titled ? 'fill="var(--text)" font-weight="600"' : 'fill="var(--dim)"'}>${esc(name)}</text></svg>`;
+  }
   s += `<line x1="0" x2="${W}" y1="${HEAD - .5}" y2="${HEAD - .5}" stroke="var(--line2)"/>`;
   if (!rows.length) s += `<text x="12" y="${HEAD + 17}" fill="var(--dim)" font-size="12">no drum notes in this version</text>`;
 
@@ -152,17 +176,18 @@ function roll(cur, prev, prevName) {
     return `<rect x="${(t * k).toFixed(1)}" y="${(y[p] + (RH - h) / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" ${paint}><title>${esc(tip)}</title></rect>`;
   };
 
-  // diff against the previous version, by onset and pitch
-  const key = n => n[0] + ':' + n[2], before = prev && new Map(prev.notes.map(n => [key(n), n])), now = new Set(cur.notes.map(key));
+  // diff against the previous version, by onset and pitch, after lining up inserted bars
+  const old = prev && align(cur, prev), before = old && new Map(old.map(n => [key(n), n])), now = new Set(cur.notes.map(key));
   let add = 0, del = 0, vel = 0;
-  if (prev) for (const n of prev.notes) if (!now.has(key(n))) { del++; s += glyph(n, 'del'); }
+  if (old) for (const n of old) if (!now.has(key(n))) { del++; s += glyph(n, 'del'); }
   for (const n of cur.notes) {
     const o = before && before.get(key(n)), kind = !before ? 'same' : !o ? 'add' : o[3] !== n[3] ? 'vel' : 'same';
     add += kind === 'add'; vel += kind === 'vel';
     s += glyph(n, kind, kind === 'vel' && o);
   }
   $('scroll').innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}</svg>`;
-  $('diff').innerHTML = prev ? `<span class="add">+${add} added</span><span class="del">−${del} removed</span><span class="vel">~${vel} velocity</span><span>vs ${prevName}</span>`
+  const db = prev ? bars.length - prev.bars.length : 0;
+  $('diff').innerHTML = prev ? `${db ? `<span class="${db > 0 ? 'add' : 'del'}">${db > 0 ? '+' : '−'}${Math.abs(db)} bars</span>` : ''}<span class="add">+${add} added</span><span class="del">−${del} removed</span><span class="vel">~${vel} velocity</span><span>vs ${prevName}</span>`
                              : `<span>${cur.notes.length} notes, ${bars.length} bars</span>`;
 }
 

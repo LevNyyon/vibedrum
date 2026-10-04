@@ -70,8 +70,24 @@ Ops, run top to bottom, each sees the result of the ones before:
 | `delete <sel>` | remove notes |
 | `remap <sel> to=<lane or pitch>` | change the pitch, for example closed hat to open hat |
 | `copy from=17-20 to=21-28 [lanes=...]` | replace the destination bars (those lanes) with the source bars, tiled |
+| `insert at=N count=K` | K empty bars before bar N (N = bars + 1 appends). Everything from bar N on moves later in every track: notes, tempo, meter, titles. The new bars take the meter of the bar before them; at bar 1 the song keeps its start tempo and meter. Later lines use the new bar numbers. |
 
 Fill spans and sections are computed once from the song as it was before the script.
+An `insert` shifts the fill spans with their bars.
+
+## Titles
+
+```
+title 1 Intro, big toms
+title 5 Verse
+title 5
+```
+
+- `title N text` names the section that starts at bar N. It is a MIDI marker on the bar start, so a DAW that imports markers shows it too.
+  The text runs to the end of the line, no `#` in it. A bar has at most one title, a new one replaces it.
+- `title N` alone removes the title of bar N.
+- A title starts a section, and the section takes its name. It runs until the next title or the next section the analysis finds,
+  so title the part after a new part as well.
 
 ## Lanes (built in General MIDI map)
 
@@ -98,6 +114,7 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 
 ```
 # vibedrum: ppq 480, 16 bars, ...               ppq = ticks per quarter note, the unit of shift and humanize time
+# markers: 1:Intro 5:Verse                       titles, bar:text. Only printed when the song has some.
 # lanes: pitch lane count vel min/avg/max sd     how each lane is played. sd near 0 = machine gun.
 # sections: name bars keeper feel kick/bar vel lock
 # fills: 8:3-5 16:1-5                            bar:fromBeat-toBeat

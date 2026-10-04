@@ -14,7 +14,7 @@ struct Event { int tick; std::vector<uint8_t> bytes; };   // any non-note event,
 struct Track { std::string name; std::vector<Event> events; std::vector<Note> notes; int end = 0; };
 struct Bar   { int start, len, num, den; };
 struct Span  { int bar; double from, to; };               // bar 1 based, beats 1 based in quarter notes, to exclusive
-struct Section { int from, to; std::string name, keeper, feel; double kicks, vel, lock; };
+struct Section { int from, to; std::string name, keeper, feel; double kicks, vel, lock; bool titled = false; };   // titled: name is a marker, not a letter
 
 struct Song {
     int format = 1, ppq = 480;

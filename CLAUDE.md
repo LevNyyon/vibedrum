@@ -36,5 +36,7 @@ Build and check:
 - Bulk ops for wide changes, grid rewrites for specific bars. Unchanged cells keep their exact timing and velocity,
   so copy rows from `show` and change only the cells you mean to.
 - Count cells. A row with the wrong cell count rejects the whole script.
+- A part you add, or one he names, gets a `title` (what it is, in his words: "Intro, big toms"), and so does the part after it,
+  so each title ends where its part ends. New bars come from `insert`, never from rewriting bars he already has.
 - The kick stays locked to the riff unless he asks otherwise. A fill keeps its landing: crash and kick on the next downbeat, or on the push.
 - Code changes follow ponytail: no new dependencies, core stays std only, one self-check, shortcuts marked with `ponytail:`.

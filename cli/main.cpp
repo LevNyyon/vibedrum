@@ -166,14 +166,21 @@ static int render(const vd::Song& s, const std::string& out, int from, int to, b
 static std::string json(const vd::Song& s) {
     auto n = [](long x) { return std::to_string(x); };
     auto close = [](std::string& o) { if (o.back() == ',') o.back() = ']'; else o += ']'; };
+    auto str = [](const std::string& v) {   // lane names and titles come from any DAW
+        std::string q = "\"";
+        for (unsigned char c : v) {
+            if (c < 0x20) { char u[8]; snprintf(u, sizeof u, "\\u%04x", c); q += u; continue; }
+            if (c == '"' || c == '\\') q += '\\';
+            q += c;
+        }
+        return q + "\"";
+    };
     std::string o = "{\"ppq\":" + n(s.ppq) + ",\"bars\":[";
     for (auto& b : vd::bars(s)) o += "[" + n(b.start) + "," + n(b.len) + "," + n(b.num) + "," + n(b.den) + "],";
+    close(o); o += ",\"sections\":[";
+    for (auto& sc : vd::sections(s)) o += "[" + n(sc.from) + "," + n(sc.to) + "," + str(sc.name) + "," + (sc.titled ? "true" : "false") + "],";
     close(o); o += ",\"rows\":[";
-    for (auto& [p, lane] : vd::rows(s)) {
-        std::string q;
-        for (char c : lane) { if (c == '"' || c == '\\') q += '\\'; q += c; }
-        o += "[" + n(p) + ",\"" + q + "\"],";
-    }
+    for (auto& [p, lane] : vd::rows(s)) o += "[" + n(p) + "," + str(lane) + "],";
     close(o); o += ",\"notes\":[";
     for (size_t ti = 0; ti < s.tracks.size(); ti++) for (auto& x : s.tracks[ti].notes)
         if (vd::isDrum(s, ti, x)) o += "[" + n(x.tick) + "," + n(x.dur) + "," + n(x.pitch) + "," + n(x.vel) + "],";
@@ -268,6 +275,17 @@ static int selfcheck() {
     vd::pickParts(s);
     CHECK(s.drumTrack == 1 && s.riffTrack == 2);
     CHECK(vd::show(s).find("# riff") != std::string::npos && vd::sections(s)[0].lock == 1);
+
+    // insert moves every track from the insertion point, the start state stays, titles name sections and survive the file
+    auto kicks = count(s, 36, 36);
+    vd::apply(s, "insert at=1 count=2\ntitle 1 Big tom intro\ntitle 3 Groove\n");
+    auto sc = vd::sections(s); auto T = vd::tempos(s);
+    CHECK(vd::bars(s).size() == 6 && count(s, 36, 36) == kicks && N()[0].tick >= 3840 && s.tracks[2].notes[0].tick == 3840);
+    CHECK(T.size() == 1 && T[0].first == 0 && T[0].second == int(60e6 / 140));
+    CHECK(sc[0].titled && sc[0].name == "Big tom intro" && sc[0].to == 2 && sc[1].name == "Groove" && sc[1].from == 3);
+    CHECK(vd::sections(vd::parseMidi(vd::writeMidi(s)))[0].name == "Big tom intro");
+    vd::apply(s, "title 1\n");
+    CHECK(!vd::sections(s)[0].titled);
 
     puts("selfcheck ok");
     return 0;

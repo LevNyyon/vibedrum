@@ -191,6 +191,7 @@ An analyze(const Song& s) {
         }
         Section sc{f + 1, t, a.marker[f], mode(k2, true), mode(f2, false), kicks / (t - f), nn ? vel / nn : 0, -1};
         if (!R.empty()) { int m = 0; for (auto& r : R) m += K.count(r); sc.lock = double(m) / R.size(); }
+        sc.titled = !sc.name.empty();
         if (sc.name.empty()) {
             auto key = sc.keeper + "/" + sc.feel; size_t n = letter.size();
             if (!letter.count(key)) letter[key] = std::string(1, char('A' + n % 26));
@@ -543,6 +544,7 @@ std::string apply(Song& song, const std::string& script) {
     if (s.drumCh < 0 && !notes.empty()) ch = notes[0].ch;
     std::map<std::string, std::array<int, 3>> stat;   // lane -> added, removed, changed
     size_t before = notes.size();
+    int nb0 = nb;
 
     auto fail = [&](const std::string& m) { throw std::runtime_error("line " + std::to_string(ln) + ": " + m); };
     auto drum = [&](const Note& n) { return isDrum(s, s.drumTrack, n); };
@@ -577,7 +579,7 @@ std::string apply(Song& song, const std::string& script) {
         {"vel", "bars beats lanes v fills set scale add min max"}, {"ramp", "bars beats lanes v fills from to"},
         {"accent", "bars beats lanes v fills grid pattern mix"}, {"humanize", "bars beats lanes v fills vel time seed"},
         {"shift", "bars beats lanes v fills ticks"}, {"delete", "bars beats lanes v fills"},
-        {"remap", "bars beats lanes v fills to"}, {"copy", "from to lanes"},
+        {"remap", "bars beats lanes v fills to"}, {"copy", "from to lanes"}, {"insert", "at count"},
     };
 
     int curBar = -1, curGrid = 16;
@@ -629,6 +631,22 @@ std::string apply(Song& song, const std::string& script) {
             continue;
         }
         curBar = -1;
+        if (w[0] == "title") {   // a MIDI marker on the bar start: the DAW shows it, and the analysis starts a section there
+            int b = w.size() > 1 ? atoi(w[1].c_str()) - 1 : -1;
+            if (b < 0 || b >= nb) fail("title needs a bar of the song, title N Some name, the song has " + std::to_string(nb) + " bars");
+            std::string text;
+            for (size_t i = 2; i < w.size(); i++) text += (i > 2 ? " " : "") + w[i];
+            for (auto& tr : s.tracks) for (size_t i = tr.events.size(); i-- > 0;) {
+                auto& e = tr.events[i];
+                if (e.bytes.size() >= 2 && e.bytes[0] == 0xff && e.bytes[1] == 0x06 && barOf(B, e.tick + tol) == b) { tr.events.erase(tr.events.begin() + i); stat["title"][1]++; }
+            }
+            if (!text.empty()) {
+                Event m{B[b].start, {0xff, 0x06}};
+                m.bytes.insert(m.bytes.end(), text.begin(), text.end());
+                s.tracks[0].events.push_back(m); stat["title"][0]++;
+            }
+            continue;
+        }
         auto op = OPS.find(w[0]);
         if (op == OPS.end()) fail("unknown op '" + w[0] + "'");
         auto allowed = words(op->second);
@@ -653,6 +671,27 @@ std::string apply(Song& song, const std::string& script) {
             for (auto& item : split(arg["lanes"], ',')) if (glob(item.c_str(), l.c_str()) || glob(item.c_str(), r.c_str()) || item == p) return true;
             return false;
         };
+
+        if (w[0] == "insert") {   // empty bars before bar `at`, everything from there on moves later, as in a DAW
+            need("at"); need("count");
+            int at = (int)numArg("at", 0) - 1, k = (int)numArg("count", 0);
+            if (!nb) fail("the song has no bars to insert next to");
+            if (at < 0 || at > nb) fail("insert at=" + arg["at"] + " is outside the song, use 1 to " + std::to_string(nb + 1));
+            if (k < 1 || k > 999) fail("insert count= takes 1 to 999 bars");
+            Bar m = B[at ? at - 1 : 0];   // the new bars take the meter of the bar before them
+            int t0 = at < nb ? B[at].start : B[nb - 1].start + B[nb - 1].len, d = k * (m.num * 4 * s.ppq / m.den);
+            for (auto& tr : s.tracks) {
+                for (auto& n : tr.notes) if (n.tick + tol >= t0) n.tick += d;
+                // at bar 1 the start state (tempo, meter, names, programs) stays at tick 0 for the new bars. Titles move with their bar.
+                for (auto& e : tr.events)
+                    if (at ? e.tick + tol >= t0 : e.tick > 0 || (e.bytes.size() >= 2 && e.bytes[0] == 0xff && e.bytes[1] == 0x06)) e.tick += d;
+                if (tr.end + tol >= t0) tr.end += d;
+            }
+            s.tracks[0].end = std::max(s.tracks[0].end, t0 + d);
+            for (auto& f : F) if (f.bar - 1 >= at) f.bar += k;
+            B = bars(s); nb = B.size();
+            continue;
+        }
 
         if (w[0] == "copy") {
             need("from"); need("to");
@@ -749,6 +788,7 @@ std::string apply(Song& song, const std::string& script) {
     std::stable_sort(notes.begin(), notes.end(), [](const Note& a, const Note& b) { return a.tick < b.tick; });
     std::ostringstream o;
     for (auto& [l, c] : stat) if (c[0] || c[1] || c[2]) o << l << ": +" << c[0] << " -" << c[1] << " ~" << c[2] << "\n";
+    if (nb != nb0) o << "bars: " << nb0 << " -> " << nb << "\n";
     if (o.str().empty()) o << "no changes\n";
     o << "notes: " << before << " -> " << notes.size() << "\n";
     song = std::move(s);
