@@ -492,7 +492,12 @@ std::string show(const Song& s, int from, int to, ShowOpts opt) {
         std::string tag, key = std::to_string(g);
         for (auto& f : a.fills) if (f.bar == b + 1) tag += " fill=" + num(f.from) + "-" + num(f.to);
         for (auto& [p, r] : rows) key += "/" + std::to_string(p) + r;
-        if (opt.exactVel) for (auto nt : a.drum[b]) key += "," + std::to_string(nt->vel);   // with exact velocities shown, only exact repeats fold
+        std::map<int, std::string> vline;   // pitch -> exact velocities in hit order
+        if (opt.exactVel) for (auto nt : a.drum[b]) vline[nt->pitch] += std::to_string(nt->vel) + " ";
+        for (auto& [p, v] : vline) key += "," + v;   // with exact velocities shown, only exact repeats fold
+        std::string riffRow(a.riff[b].empty() ? 0 : n, '-');
+        for (auto nt : a.riff[b]) riffRow[cellOf(s, a.B[b], g, nt->tick)] = 'x';
+        key += "/riff" + riffRow;   // a bar under a different riff is not a repeat
         auto it = seen.find(key);
         int ref = rows.empty() ? 0 : it != seen.end() ? it->second : -1;
         if (ref >= 0) {   // empty, or a repeat of an earlier bar
@@ -522,17 +527,9 @@ std::string show(const Song& s, int from, int to, ShowOpts opt) {
         for (int p : order) {
             std::string label = lane(s, p) + " " + std::to_string(p);
             o << label << std::string(W - label.size(), ' ') << " |" << grouped(rows[p]) << "|\n";
-            if (opt.exactVel) {
-                o << "#" << std::string(W + 1, ' ');
-                for (auto nt : a.drum[b]) if (nt->pitch == p) o << nt->vel << " ";
-                o << "\n";
-            }
+            if (opt.exactVel) o << "#" << std::string(W + 1, ' ') << vline[p] << "\n";
         }
-        if (!a.riff[b].empty()) {
-            std::string r(n, '-');
-            for (auto nt : a.riff[b]) r[cellOf(s, a.B[b], g, nt->tick)] = 'x';
-            o << "# riff" << std::string(W - 6, ' ') << " |" << grouped(r) << "|\n";
-        }
+        if (!riffRow.empty()) o << "# riff" << std::string(W - 6, ' ') << " |" << grouped(riffRow) << "|\n";
         lastGrid = g; lastSig = sig;
     }
     flush();

@@ -26,8 +26,12 @@ static vd::Song load(const Args& a, size_t which = 0) {
     if (a.pos.size() <= which) throw std::runtime_error("which MIDI file?");
     auto s = vd::parseMidi(slurp(a.pos[which]));
     if (a.opt.count("map")) { auto m = slurp(a.opt.at("map")); vd::loadMap(s, {m.begin(), m.end()}); }
-    if (a.opt.count("track") || a.opt.count("riff"))
-        vd::pickParts(s, a.opt.count("track") ? atoi(a.opt.at("track").c_str()) : -1, a.opt.count("riff") ? atoi(a.opt.at("riff").c_str()) : -1);
+    if (a.opt.count("track") || a.opt.count("riff")) {
+        int track = a.opt.count("track") ? atoi(a.opt.at("track").c_str()) : -1, riff = a.opt.count("riff") ? atoi(a.opt.at("riff").c_str()) : -1;
+        vd::pickParts(s, track, riff);
+        if (track >= 0 && s.drumTrack != track) throw std::runtime_error("--track " + std::to_string(track) + ": no such track");
+        if (riff >= 0 && s.riffTrack != riff) throw std::runtime_error("--riff " + std::to_string(riff) + ": no such track, or it is the drum track");
+    }
     return s;
 }
 

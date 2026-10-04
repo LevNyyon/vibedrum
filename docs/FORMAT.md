@@ -29,10 +29,10 @@ kick 36    |9-99 --9- 9--9 9-9-|
   `x` hit that keeps its velocity (on an empty cell: the lane's typical velocity).
   Shown digit bands: 1 = 1-20, 2 = 21-34, 3 = 35-48, 4 = 49-62, 5 = 63-76, 6 = 77-90,
   7 = 91-104, 8 = 105-118, 9 = 119-127.
-- The comment after `bar N grid=G` gives meter and tempo when they change, and `fill=FROM-TO` when the bar holds a fill candidate.
+- The comment after `bar N grid=G` gives meter and tempo when they change (and on the first bar of each `--bars` range), and `fill=FROM-TO` when the bar holds a fill candidate.
   A `# --- section` line opens each section, and each `--bars` range.
 - `# riff` is read only: onsets of the main pitched track (guitar or bass) when the file has one.
-- `# bar 18 = bar 17` means the bar is cell-identical to an earlier one. To edit it, write a full `bar 18 grid=G` block.
+- `# bar 18 = bar 17` means the bar is cell-identical to an earlier one, riff row included. To edit it, write a full `bar 18 grid=G` block.
 - `show` picks the coarsest grid that holds every onset of the bar. You may write a bar at any grid.
 - `show --vel` adds a comment line of exact velocities under each row, in hit order. Use it to check fine dynamics: a digit is a band 14 wide.
   With `--vel`, only bars with identical velocities fold into `# bar N = bar M`.
@@ -126,7 +126,7 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 
 - keeper: the cymbal family that keeps time in the section (hh, hh_open, ride, china, crash1, ...), `none` when no cymbal does (a tom groove, a stop).
 - feel: `normal` (snare on 2 and 4), `half` (snare on 3), `double` (snare on every offbeat eighth), `blast` (8 or more snare hits in the bar), `open` (no snare), `empty` (no drums), `odd` (not 4/4), `other`.
-- lock: share of riff onsets that land together with a kick.
+- lock: share of riff onsets that land together with a kick. Kicks added where the riff rests do not lower it, so "lock not lower" does not prove the kick still follows the riff: compare the kick row with the `# riff` row.
 - Sections and fills are heuristics. They are candidates, the reader of the grid has the last word.
 
 How the engine decides, so the knowledge docs can rely on it:
@@ -154,7 +154,9 @@ vibedrum diff before.mid after.mid
 # bars changed: 8-16
 ```
 
-Sections and fill spans are those of the file before the edit. Run it after every apply: it is the check behind the acceptance tests in `knowledge/editing-principles.md`.
+Sections and fill spans are those of the file before the edit. A note is matched by pitch within the timing tolerance (ppq/24),
+so a note slid further (a `shift`, a rewritten cell) or remapped shows as one removed and one added, not as moved or louder.
+Run it after every apply: it is the check behind the acceptance tests in `knowledge/editing-principles.md`.
 The example above is an edit that failed them: asked to hit harder, the section got quieter, and the last fill ends 12 under its own peak.
 
 ## CLI

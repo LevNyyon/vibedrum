@@ -1,8 +1,8 @@
 # Song structure: the language above the drum layer
 
-Read with docs/FORMAT.md and knowledge/editing-principles.md. This file names the lettered sections of the `show` header, says what each section type looks like in the grid, and turns song level requests into edits.
+Read with docs/FORMAT.md and knowledge/editing-principles.md. This file names the lettered sections of the `show` header, says what each section type looks like in the grid, and turns section and song level requests into edits.
 
-Conventions. Cells are grid=16 indexes 0-15 in 4/4, the same numbering as grooves.md and dynamics-and-feel.md: beats 1, 2, 3, 4 = cells 0, 4, 8, 12; the "and" of each beat = cells 2, 6, 10, 14. Velocities are grid digits or raw 1-127: a written digit d sets d x 14 exactly (9 = 127, 8 = 112, 7 = 98), a shown digit is a band 14 wide (9 = 119-127, 2-3 = ghost), so levels are checked with `show --vel`. "At 9" means the shown band, never every note at exactly 127. kick/bar = kick hits in one 4/4 bar. lock is in percent, as the header prints it (85% = 0.85). `[n]` = entry in the source list. `EP n` = rule n of knowledge/editing-principles.md: every recipe here obeys it, and where a line here seems to differ the EP rule wins. "unconfirmed" = working convention, no source located. All kick/bar, vel and lock ranges are working ranges, not measured statistics (unconfirmed).
+Conventions. Cells are grid=16 indexes 0-15 in 4/4, the same numbering as grooves.md and dynamics-and-feel.md: beats 1, 2, 3, 4 = cells 0, 4, 8, 12; the "and" of each beat = cells 2, 6, 10, 14. Velocities are grid digits or raw 1-127: a written digit d sets d x 14 exactly (9 = 127, 8 = 112, 7 = 98), a shown digit is a band 14 wide (9 = 119-127, 2-3 = ghost), so levels are checked with `show --vel`. "At 9" means the shown band, never every note at exactly 127. kick/bar = kick hits in one 4/4 bar. lock is in percent, as the header prints it (85% = 0.85). `[n]` = entry in the source list. `EP n` = rule n of knowledge/editing-principles.md (second version: 24 rules and the acceptance tests): every recipe here obeys it, and where a line here seems to differ the EP rule wins. "unconfirmed" = working convention, no source located. All kick/bar, vel and lock ranges are working ranges, not measured statistics (unconfirmed).
 
 ## 1. Naming the lettered sections
 
@@ -32,8 +32,8 @@ Conventions. Cells are grid=16 indexes 0-15 in 4/4, the same numbering as groove
 
 - Breakdown: half time or slower feel at unchanged tempo, quarter note crash or china, kick doubling the palm muted chugs, plain hands over a syncopated kick, silence between the notes [1][2][3]. Quarter time [3]: one snare every second bar, so half the bars have no snare and the header may read `half` or `open`; only there the keeper drops to half notes.
 - Verse at lower intensity, pre chorus builds anticipation, chorus is the peak [14][15]. A verse to chorus change can be as small as hat to ride [12].
-- Heavy sections keep kick and snare at 8-9 throughout (backbeats 115-127 [10][11]); their level differences come from keeper, feel and density, not from kick or snare velocity (unconfirmed as a rule). A lane flat at exactly 127 is a stiff file, not a target: the keeper sits a step under kick and backbeat, and exactly 127 belongs to section starts and phrase starts (grooves.md section 4).
-- The lock column needs a riff track. Without one, read the other columns and say that lock could not be read (EP 15).
+- Heavy sections keep kick and snare at 8-9 throughout (backbeats 115-127 [10][11]); their level differences come from keeper, feel and density, not from kick or snare velocity (unconfirmed as a rule). A lane flat at exactly 127 is a stiff file, not a target: the keeper sits a step under kick and backbeat, and exactly 127 belongs to section starts and phrase starts (grooves.md section 4). The table is for naming a section, not a level to edit toward: no recipe here lowers a lane to reach it.
+- The lock column needs a riff track. Without one, read the other columns and say that lock could not be read (EP 21).
 
 ## 3. Reference bars
 
@@ -65,9 +65,9 @@ kick 36    |99-9 --99 -9-- 99--|
 ## 4. Phrase structure
 
 - Sizes: riff cycle 1, 2 or 4 bars; phrase 4 or 8 bars; section 8 or 16 bars. Odd riff cycles are cut to fit the same blocks: the last loop is cut so the cycle restarts after "say eight bars of 4/4" [5]. Fills go at the end of the 8 bar block [12] and at transitions only [15].
-- Phrase start: a cymbal + kick on cell 0, sized by rank (EP 4). First bar of a section: crash1 or crash2 + kick at 9; only there a stack (crash + china on one cell, two hands, no snare) is possible, and not when the song opens on a single crash unless he asks for the biggest entrance. Phrase start inside a section: one cymbal, either the china or crash keeper at 9 on that cell, or one crash in place of the hat or ride keeper hit (the same hand plays it). No phrase start or landing outranks the first hit of its section or of the song, and the next section's keeper never sounds before its first bar.
+- Phrase start: a cymbal + kick on cell 0, sized by rank (EP 6). First bar of a section: crash1 or crash2 + kick at 9. A stack (two cymbals on one cell, two hands, no snare) belongs there and nowhere else: take it when the request is about that section's entrance or impact. Phrase start inside a section: one cymbal, either the china or crash keeper at 9 on that cell, or one crash in place of the keeper hit (the same hand plays it). No phrase start or landing inside a section outranks the first hit of that section or of the song, and the next section's keeper never sounds before its first bar.
 - Phrase end: a fill listed in the header (`8:3-5` = bar 8, beats 3 to 5), or a keeper change such as an hh_open on cell 14 leading into the next bar (unconfirmed).
-- Measuring phrase length: (a) bars between crash hits on cell 0; (b) `# bar N = bar M` lines: bar 5 = bar 1 means a 4 bar cycle; (c) spacing of the fills list: bars 8, 16, 24 mean 8 bar phrases.
+- Measuring phrase length: the distance between fills, or between crash hits on cell 0, whichever is shorter (fills in bars 4, 8, 12, 16 = 4 bar phrases, each starting in the bar after a fill). `# bar 5 = bar 3` lines give the riff cycle, which is often shorter than the phrase: a 2 bar riff inside 4 bar phrases is normal.
 - Odd lengths: 3, 5, 6 or 7 bar phrases, or 4 + 4 + 4 + 2. Usual cause: an odd riff cycle cut to fit. "The Abysmal Eye" per one transcription [4]: a 26 quarter note cycle 4 times + 24 beats, and a 15 quarter cycle 4 times + 4 beats. Derived totals: 128 beats = 32 bars and 64 beats = 16 bars.
 - Cycle reset: cell 0 of the first bar of the next 8 or 16 bar block, marked by a crash; the last cycle before it is cut short [5]. The kick row and `# riff` restart from their first cells there.
 - Polymetric sections: bars that differ from each other are the cycle rotating, not mistakes. Never `copy` bar 1 over the phrase. Edit kicks cell by cell under `# riff`; leave the hands alone unless asked.
@@ -75,57 +75,42 @@ kick 36    |99-9 --99 -9-- 99--|
 
 ## 5. Energy without a tempo change
 
-Ops cannot change tempo or meter. Answer "faster", "slower", "bigger", "smaller", "harder" with these levers: one per request, the first that has room in this file, a second only when the first is small (EP 1). He can say "more".
+Ops cannot change tempo or meter. "Faster", "slower", "bigger", "smaller", "harder" are answered with these levers. The list is the inventory, not the order: a request takes the two or three levers with the most impact in this file (EP 1, 2), and for a section the order is entrance, then weight and width, then its fills (section 10). He can say "more" or "less".
 
-1. Keeper ladder, low to high, as lane (rate, digit): none or hh_pedal 44 (quarters, 3-5) < hh 42 closed (eighths, 6-8, accented 8-7) < hh 42 with hh_open 46 on cell 14 or on the offbeats (7-8) < hh_open 46 (quarters or eighths, 7-8) < ride 51 (eighths, 6-8) < ride_bell 53 (quarters, 8) < crash1 49 or crash2 57 ridden (quarters 8, offbeat eighths 7) < china 52 (quarters, 8). The top two are flavours: crash riding reads wide (chorus), china reads harsh (breakdown, heavy verse). Sourced: hat to ride as a section change [12], a ridden crash fills more than hat or ride [18]. The rest of the order is a convention (unconfirmed); hh_open and ride are neighbours, swap them freely (ride reads cleaner, hh_open dirtier). The header prints `hh` for both hat rungs: check the rows. For "heavier" and "more aggressive" step only through hh, hh_open, ridden crash, china (the four rungs of grooves.md section 4): the ride rungs are the clean and melodic side steps, not a step toward heavy. One rung per request, remapped by pitch, never onto the keeper of the next section (EP 4). A remap carries the old velocities: a flat row then gets the new rung's shape with `accent`, a shaped row keeps its own.
+1. Keeper ladder, low to high, as lane (rate, digit): none or hh_pedal 44 (quarters, 3-5) < hh 42 closed (eighths, 6-8, accented 8-7) < hh 42 with hh_open 46 on cell 14 or on the offbeats (7-8) < hh_open 46 (quarters or eighths, 7-8) < ride 51 (eighths, 6-8) < ride_bell 53 (quarters, 8) < crash1 49 or crash2 57 ridden (quarters 8, offbeat eighths 7) < china 52 (quarters, 8). The top two are flavours: crash riding reads wide (chorus), china reads harsh (breakdown, heavy verse). Sourced: hat to ride as a section change [12], a ridden crash fills more than hat or ride [18]. The rest of the order is a convention (unconfirmed); hh_open and ride are neighbours, swap them freely (ride reads cleaner, hh_open dirtier). The header prints `hh` for both hat rungs: check the rows. For "heavier" and "more aggressive" step only through hh, hh_open, ridden crash, china (the four rungs of grooves.md section 4): the ride rungs are the clean and melodic side steps, not a step toward heavy. One rung per request, remapped by pitch, never onto the keeper of the next section (EP 6). A remap carries the old velocities: a flat row then gets a shape read from this file (section 10, the chorus recipe), a shaped row keeps its own.
 2. Keeper rate: half notes (cells 0, 8) < quarters < eighths < sixteenths. Fewer cymbal hits per bar go with slower feels, more with faster ones [1]. The rate follows the snare: quarters under `half`, half notes only in quarter time or when he asks for a slower cymbal by name. Thinning the keeper while kick and snare stay does not add weight, the section only loses its pulse (trial finding), so it is never a step of "harder" or "heavier". Inside a section the rate stays constant (grooves.md section 2). When he asks for a change mid section: start it on a phrase start, keep fill bars at the old rate so each still holds 2 keeper hits, and mark the first bar with one crash in place of the keeper on cell 0: `delete bars=A-B beats=2-3 lanes=52`, `delete bars=A-B beats=4-5 lanes=52`, `remap bars=A beats=1-1.25 lanes=52 to=crash1`. Sixteenth cymbals at speed belong to the fastest feels [1]; sixteenth hats in a slow groove (one handed up to about 110 bpm, unconfirmed) are colour, not a peak.
 3. Feel [1][17]: `half` (snare on cell 8) sounds half as fast; `normal` (cells 4, 12); `double` (cells 2, 6, 10, 14) sounds twice as fast; `blast` is the ceiling. Moving the snare changes perceived speed by 2x at the same bpm, so it needs a feel word from him ("half time", "double time") or a yes to one question. To switch: rewrite the snare row of one bar, then `copy from=N to=A-B lanes=snare`. `copy` replaces every snare lane note of the destination, so leave fill bars out of `to=`.
-4. Kick density at grid=16: 2-4 sparse, 5-8 medium, 9-12 dense, 16 = constant double kick. 24 at grid=24 or 32 at grid=32 is the ceiling. A kick row that follows the riff is not a lever: density changes only where he asks for double kick or a sparser riff.
-5. Ghost notes: snare at 20-50, digits 2-3 [9][10]. Adding them raises motion at low volume (verse, clean part). Deleting them makes a bar starker (chorus, breakdown). Select them as `lanes=38 v=1-62`; no op carries one over 59 (EP 9).
+4. Kick density at grid=16: 2-4 sparse, 5-8 medium, 9-12 dense, 16 = constant double kick. 24 at grid=24 or 32 at grid=32 is the ceiling. A kick row that follows the riff is not a lever: density changes only where he asks for double kick or a sparser riff. A kick under a hand hit that is already there is weight, not density (section 7).
+5. Ghost notes: snare at 20-50, digits 2-3 [9][10]. Adding them raises motion at low volume (verse, clean part). Deleting them makes a bar starker (chorus, breakdown). Select them as `lanes=38 v=1-62`; no op carries one over 59 (EP 13).
 6. Open hat: hh_open on cell 14 or on all offbeats lifts; closing it tightens.
 7. No keeper: kick + snare only. Loud it reads stark and heavy (first 2 bars of a breakdown repeat), at 3-5 it reads as a drop.
-8. Velocity: general programming advice puts the kick at 100-115 on main hits and 75-95 on syncopations and the backbeat at 100-120 [9]; metal backbeats sit at 115-127 [10][11] and riff locked kicks in digits 8-9. Clean parts drop the whole kit to 3-5. Room check first (EP 2): `# lanes` gives min/avg/max per lane for the whole song, `show --vel --bars A-B` the section. Headroom (the loudest note of the voice in the section is under 127): `vel SEL lanes=PITCH add=N` with N = 127 minus that note, so the top reaches 127 and every difference survives. Never `min=` or `set=` on a whole voice (EP 7). Ceiling (the voice is flat at 127, sd 0): nothing can be raised, the lever is contrast. Kick and backbeat stay, the keeper comes down around them: 20 on beats 2 and 4, 10 on beats 1 and 3, phrase starts left at 127 (the script is in section 10).
+8. Velocity and the ceiling (EP 3, 4). General programming advice puts the kick at 100-115 on main hits and 75-95 on syncopations and the backbeat at 100-120 [9]; metal backbeats sit at 115-127 [10][11] and riff locked kicks in digits 8-9. Clean parts drop the whole kit to 3-5. Room check first: `# lanes` gives min/avg/max per lane for the whole song, `show --vel --bars A-B` the section. Headroom (the loudest note of the voice in the section is under 127): `vel SEL lanes=PITCH add=N` with N = 127 minus that note, so the top reaches 127 and every difference survives. Never `min=` or `set=` on a whole voice (EP 11). Ceiling (the voice is flat at 127, sd 0): nothing can be raised and "louder" is not a true report. Then take, in this order: weight (a kick under the hit, a second cymbal on the entrance), air (silence right before the hit), the lanes of the section that still have room (its fills). Turning the keeper down around the hits is the last step, 15 to 25 on its weak positions only, and never the answer on its own (section 10, "hit harder", step 4).
 
-Arc template (unconfirmed): intro riff on crash or china for 4 to 8 bars; verse 1 on closed hat; pre chorus 1 to 2 rungs up; chorus on ride_bell or crash; verse 2 one rung above verse 1; breakdown on china at `half` after chorus 2; clean bridge with no keeper; last chorus = chorus plus one lever (crash on every phrase start, or kick/bar 16). Two adjacent sections with every lever at maximum cancel each other. The cure is to lower the first one, which is an edit outside the section he named: offer it, and do it when he names both sections or says yes (EP 5).
+Arc template (unconfirmed): intro riff on crash or china for 4 to 8 bars; verse 1 on closed hat; pre chorus 1 to 2 rungs up; chorus on ride_bell or crash; verse 2 one rung above verse 1; breakdown on china at `half` after chorus 2; clean bridge with no keeper; last chorus = chorus plus one lever (crash on every phrase start, or kick/bar 16). Two adjacent sections with every lever at maximum cancel each other. The cure is to lower the first one, which is an edit outside the section he named: offer it, and do it when he names both sections or says yes (EP 7).
 
 ## 6. Transitions
 
-- Fill: last beat (`beats=4-5`), last 2 beats (`beats=3-5`) or whole bar (`beats=1-5`) of the final bar of a phrase. The keeper stops where the fill starts. Velocities climb into the landing [10], for example 90 to 127: on notes that are already there use `ramp scale=A-B`, which keeps the hand shape; `ramp from= to=` only on a row you just wrote flat (EP 13). Haake: a fill has to flow with the music and add to the buildup, not pull attention [6]. Working rule (unconfirmed): put fill hits on cells where `# riff` has onsets.
-- Fill ranks (EP 3): a one beat pickup inside a phrase < a phrase or section ending fill < the fill into a new section. After any edit the order still holds in length, peak velocity and landing, and 127 is kept for the last hit of the biggest.
-- Landing: the cymbal + kick on cell 0 after a fill, sized as the phrase start it is (section 4). A hat or ride keeper starts again on cell 2 or 4. A fill in the last bar of the file has no landing bar: leave it out and say so (EP 16). A fill with no crash after it is still a fill; adding that crash is a fill request (fills.md section 6), in the recipes here it is mentioned at most (EP 17).
-- Drop to silence: every lane empty for the last eighth (`beats=4.5-5`), the last beat (`beats=4-5`) or a whole bar before a breakdown or a last chorus. Silence or a brief pause before a breakdown raises its impact [14]. An eighth lasts 30000 / bpm ms: 214 ms at 140 bpm, 231 at 130. A crash or china struck before the gap rings through it (the lane map has no choke): for a dead stop end on snare, toms or kick; a stab left ringing is the other option. If `# riff` has onsets in the window the band plays through: no gap there.
-- Writing the gap. It sits in the bar before the section he named: allowed as setup, always reported (EP 5). Plain groove bar: `delete bars=N beats=4.5-5 lanes=42,46,51,36`, lanes named; a kick in that window goes with the hands and is counted in the report. A bar whose fill runs to the bar line: never cut the tail. Take the fill's first eighth out and slide the rest an eighth earlier: `delete bars=N beats=3-3.5 lanes=38`, then `shift bars=N beats=3.5-5 lanes=38,48,43 ticks=-240` (an eighth = ppq / 2 ticks, lanes = the fill's pitches). Velocities and the order of the drums stay, two notes go: say so.
+- Fill: last beat (`beats=4-5`), last 2 beats (`beats=3-5`) or whole bar (`beats=1-5`) of the final bar of a phrase. The keeper stops where the fill starts. Velocities climb into the landing [10]: on notes that are already there use `ramp scale=A-B` with A at 1 or above, which keeps the hand shape and lowers nothing; `ramp from= to=` only on a row you just wrote (EP 18). Haake: a fill has to flow with the music and add to the buildup, not pull attention [6]. Working rule (unconfirmed): put fill hits on cells where `# riff` has onsets.
+- Fill ranks (EP 5): a one beat pickup inside a phrase < a section fill (the fill into a section, and the last fill of a section, which leads into whatever follows it). The ranks differ by a digit at the top and in length or weight. Two fills of one rank still differ in something designed: the contour, the drum that carries the top, the kick under it. Shaping: the fills rule of section 10.
+- Entrance and landing (EP 6): the cymbal + kick on cell 0 after a fill, sized as the phrase start it is (section 4). It stands over what comes right before it: 10 or more over the last note of the fill, or air. A hat or ride keeper starts again on cell 2 or 4. A fill in the last bar of the file has no landing bar: leave it out and say so (EP 22). A fill with a plain keeper hit after it is still a fill: the recipes here mark the phrase starts of the named section only, anywhere else the missing crash is mentioned, not added (EP 23, fills.md section 6).
+- Air: every lane empty for the last eighth (`beats=4.5-5`), the last beat (`beats=4-5`) or a whole bar before a breakdown or a last chorus. Silence or a brief pause before a breakdown raises its impact [14]. An eighth lasts 30000 / bpm ms: 214 ms at 140 bpm, 231 at 130. A crash or china struck before the gap rings through it (the lane map has no choke): for a dead stop end on snare, toms or kick; a stab left ringing is the other option. `# riff` onsets in the last eighth: the guitar plays through and the drums still stop, say so. A whole beat or more with riff onsets in it is a drop: on his word.
+- Writing the air. It sits in the bar before the section he named: setup, always reported (EP 7). Plain groove bar: `delete bars=N beats=4.5-5 lanes=42,46,51`, lanes named. A kick in that window is locked and stays (section 7, EP 7): then there is no air, say so. A fill that runs to the bar line: never cut its tail. One eighth comes out of the drum that has the most notes in the fill, and every fill note after it slides an eighth earlier: `delete bars=N beats=A-B lanes=PITCH`, then `shift bars=N beats=B-5 lanes=<the fill's pitches> ticks=-T` with T = ppq / 2 (240 at ppq 480). Drums, order and velocities stay, two notes go, and the fill ends on its last drum an eighth early: say so. No drum holds more than two notes: an eighth would cost a voice, so take the last 16th out instead and let the top sit on the eighth cell before it. `diff` counts the slid notes as removed and added, not as moved. This is the air of a section entrance; the smaller air of a fill request (the last 16th out) is fills.md section 6.
 - Pickup: 1 to 3 hits on cells 13-15 after a gap (snare, toms, or kick + crash on `# riff` onsets), rising by 10 or more.
-- Build: the pulse goes from quarters to eighths "or even faster" and aims at a snare roll or a crash [13]. In the grid: hits per beat go 1, 2, 4, one rise from about 60 to 127, no keeper (block below).
+- Build: the pulse goes from quarters to eighths "or even faster" and aims at a snare roll or a crash [13]. In the grid: hits per beat go 1, 2, 4, one rise, no keeper (recipe in section 10).
 - Cymbal swell: crash or ride on every eighth or sixteenth for 1 to 2 bars, written flat, then `ramp from=30 to=110`, then a gap or a landing (numbers unconfirmed).
 - Feel switch: `normal` to `half` on the bar line is the standard way into a breakdown [1][3]. `half` to `normal` or `double` is the release.
 - Down pre chorus: the bars before the chorus drop out instead of building. Measured in pop: 15% of the songs with a pre chorus in a 100 song corpus [16]. In metal the same shape is a clean or kick only bar before the chorus (unconfirmed).
 - Tempo or meter change: shown on the bar header where it happens (`# 7/8 150bpm`) and in the summary lists (section 8). No op creates or moves one. Drums announce it: the last fill uses the new subdivision, for example a grid=12 or grid=24 fill before a triplet section (unconfirmed).
 - Metric modulation: the tempo jumps by a ratio. x 3/2: quarter triplet becomes the quarter (120 to 180). x 4/3: dotted eighth becomes the quarter (120 to 160). x 2/3: dotted quarter becomes the quarter (150 to 100). Set it up one bar early by playing the new pulse on the keeper; a hit every third sixteenth is `9--9 --9- -9-- 9--9`.
 
-Build, 2 bars, for plain groove bars (clear their keeper with a row of `-`; leave the kick rows out when the kick follows a riff or the file has no riff track): no keeper, snare + lowest tom in unison at 1 then 2 hits per beat (snare a digit over the tom), snare alone at 4 per beat with the leading hand a digit up, one rise across both bars. The digits carry the hand shape, `ramp scale=` the rise, and the lowest snare stays over the ghost wall of 60 (EP 9). One bar build: bar 6 alone with the same ramp over `bars=6`. tom5 stands for the lowest tom with notes in `# lanes` (EP 18). Read back with `show --vel`: snare 64 to 125 with the sixteenths 113 over 99 up to 125 over 109, tom 55 to 93.
-```vd
-bar 5 grid=16
-#            1    2    3    4
-snare 38   |7--- 7--- 7-7- 7-7-|
-tom5 43    |6--- 6--- 6-6- 6-6-|
-kick 36    |9--- 9--- 9--- 9---|
-bar 6 grid=16
-#            1    2    3    4
-snare 38   |7-7- 7-7- 7676 7676|
-tom5 43    |6-6- 6-6- ---- ----|
-kick 36    |9--- 9--- 9-9- 9-9-|
-ramp bars=5-6 lanes=38,43 scale=0.65-1.3
-```
-
 ## 7. Drums against the other parts
 
-- No riff track (no `# riff:` line in the header): there is no `# riff` row and no lock column. Skip every step in this file that reads them, treat the kick row as locked (no kick added, moved or deleted unless the request itself is a gap, a drop or a kick change), and say so in the report (EP 15). Offer `--riff N` when the file has a pitched track.
-- Kick and riff. `# riff` shows guitar or bass onsets, `lock` the share of them that carry a kick. The kick doubles the palm muted chugs [2], and the standard heavy texture is a plain hand pattern over a syncopated kick [3]. Targets: breakdown 90-100%, riff verse 70-100%. To raise lock: add a kick (`x`, the lane's own level) on every `x` of `# riff` that has none. lock does not count extra kicks; deleting the kicks on cells where `# riff` is empty is the next rung, only when he asks again (grooves.md section 1), and never inside fills or constant double kick. Where `# riff` runs 4+ adjacent cells faster than the feet should go, kick the first cell of each group only.
-- Lower lock can be on purpose: Garstka supplements bass drums with snares, for example one snare then four kicks on a riff group [8]. If a riff onset without a kick has a snare or tom on the same cell, leave it.
+- No riff track (no `# riff:` line in the header): there is no `# riff` row and no lock column. Skip every step that only reads them, take the "without a riff track" branch where a recipe has one, and say so in the report (EP 21). Every groove kick counts as locked: none is moved or deleted unless the request itself is a gap, a drop or a kick change. A kick added under a hand hit that is already there is weight, not a change to the riff. Under a backbeat: only where the kick already plays on both cells beside it, never in a rest of 2 or more cells. Under a fill of the scope: on its strong notes, the way the file's other fills carry the kick (section 10, fills rule).
+- Kick and riff. `# riff` shows guitar or bass onsets, `lock` the share of them that carry a kick. The kick doubles the palm muted chugs [2], and the standard heavy texture is a plain hand pattern over a syncopated kick [3]. Targets: breakdown 90-100%, riff verse 70-100%. To raise lock: add a kick (`x`, the lane's own level) on every `x` of `# riff` that has none. lock does not count extra kicks; deleting the kicks on cells where `# riff` is empty is the next step, only when he asks again (grooves.md section 1), and never inside fills or constant double kick. Where `# riff` runs 4+ adjacent cells faster than the feet should go, kick the first cell of each group only.
+- Lower lock can be on purpose: Garstka supplements bass drums with snares, for example one snare then four kicks on a riff group [8]. If a riff onset without a kick has a snare or tom on the same cell, leave it, unless a "hit harder" request puts the kick under that hit (section 10).
 - Hands and feet: Haake keeps quarter note cymbals and the snare on beat 3 while the feet follow the guitar cycle [4][6]. So "simplify" means the hand rows first, "tighten" means the kick row.
 - Vocals are not in the grid. Assume them in verse and chorus. Verse: one keeper, the same kick row on every riff cycle, fills only in the last bar of the phrase, ghosts under 45. Chorus: plain backbeat or `half`, crash or ride, kick on chord attacks, no fill before the last 2 beats of bar 4 or 8 (unconfirmed, practice).
-- Accents. A riff onset after a rest of 2+ cells, a chord change, or a push (onset on cell 14 or 15 held over the bar line) takes one crash + kick on that cell, a step under the section's first hit (EP 4). After a push do not add a crash on cell 0 of the next bar (the riff has no onset there), but a crash that is already there stays unless he asks to remove it (fills.md section 6). Stabs: when `# riff` has isolated hits with rests between, write kick + crash on those cells and nothing else.
+- Accents. A riff onset after a rest of 2+ cells, a chord change, or a push (onset on cell 14 or 15 held over the bar line) takes one crash + kick on that cell, a step under the section's first hit (EP 6). After a push do not add a crash on cell 0 of the next bar (the riff has no onset there), but a crash that is already there stays unless he asks to remove it (fills.md section 6). Stabs: when `# riff` has isolated hits with rests between, write kick + crash on those cells and nothing else.
 - Solo. One groove for 4 or 8 bars, ride or hat keeper, kick on the rhythm guitar (`# riff` may be the rhythm part, not the lead). Fills only at phrase ends. Step one ladder rung up every 8 bars to build. Prefer ride or hat under a lead: china or crash riding competes with it (unconfirmed).
 
 ## 8. Meter and tempo
@@ -142,7 +127,7 @@ ramp bars=5-6 lanes=38,43 scale=0.65-1.3
 
 ## 9. Section recogniser
 
-Match at least 3 features. No riff track: lock cannot be counted, so match 3 of the others and say that lock could not be read. The user wording column is inferred (unconfirmed).
+Match at least 3 features. No riff track: lock cannot be counted, so match 3 of the others and say that lock could not be read. The vel and lock numbers are working ranges: a stiff file at 127 everywhere still matches on keeper, feel and kick shape. The user wording column is inferred (unconfirmed).
 
 | what the header and grid show | section | what the user calls it |
 |---|---|---|
@@ -164,109 +149,122 @@ Match at least 3 features. No riff track: lock cannot be counted, so match 3 of 
 
 Rules for every recipe below:
 
-- Each recipe is a ladder: rungs in order, each with the condition that gives it room. Default = the first one or two rungs that change something in this file (EP 1). Then stop, report, and name the next rung as an offer. A rung whose selector would match nothing (no hats to delete, a voice already at 127) is skipped and never reported as done.
-- Room (EP 2): before choosing, read `# lanes` and `show --vel` of the section. Headroom or ceiling decides the rung (section 5, lever 8).
-- Mapping (EP 19): the blocks are written for an 8 bar example. Map each bar by its role (first bar, phrase start, the bar before, each fill bar), then look at what the mapped bar holds. A fill bar inside a range keeps its fill: no keeper rate change in it, no `copy` over it, and a fill that runs to the bar line is never cut at its tail.
-- Scope (EP 5): the named section is the scope. The bar before it (gap, build, the fill into it) and cell 0 after it are setup and landing: allowed, and each gets a line in the report. In every other section the kick row, the backbeat and the keeper stay.
-- Order (EP 11): notes (bar blocks, `copy`, `remap`, `delete`, the cell slide with `shift` of section 6), then level (`vel add=` or `scale=`), then `humanize` if the request asks for spread, then gestures (`accent`, leans with `vel add=`, rises with `ramp scale=`, one note with `set=`). Every designed difference is 10 or more (EP 12).
-- Voices (EP 14): one voice = its pitch. Backbeats are `lanes=38 v=100-127`, ghosts `lanes=38 v=1-62`, hand hats `lanes=42,46`. A role name (`hat`, `cym`, `tom`) only where every voice of the family is meant.
-- Fills (EP 3, 6, 7): shape each fill by its rank (section 6) with its own `bars=N beats=A-B` lines, never with the bulk `fills` selector. Flat fill: hand shape first, `accent` with the fill's own digit on the weak cells and one digit more on the leading hand (`pattern=8787` for a fill flat at 98, `7878` when the leading hand sits on the odd cells), then the rise with `ramp scale=`. The rise takes 2 to 4 off the hand gap, which stays at 10 or more. Shaped fill: skip the accent. No remap: a fill keeps its drums and its descent.
-- Cases (EP 15-18): no riff track: skip the riff and lock steps and say so (section 7). A fill in the last bar of the file has no landing, and a fill with no crash after it stays a fill (section 6). A tom the kit does not have: the pitches in the blocks stand for the toms the fill has, the nearest ones with notes in `# lanes`, same number of drums.
-- Check and report (EP 20, 21): `show --vel` on every changed bar, find each gesture in the numbers, then two or three lines: what changed, where, what changed outside the named section, what was skipped and why. Notes added or removed are counted in the report.
+- Order of impact (EP 1, 2). A section request is answered with these levers, in this order: (1) the entrance: air before it, the kick and a second cymbal on its first hit; (2) weight and width inside it: a kick under the hits, level where a voice has headroom, the keeper one step wider; (3) the fills in and around it brought up to the section, each ending on its top. The default answer is the two or three of these that have room in this file, all in one script. Fine shaping comes after them and never alone. A lever whose ops would change nothing is skipped and never reported as done.
+- Direction (EP 3, 4). "Bigger", "harder", "more impact" and "build" never leave a note of the section quieter than it was: shape by raising the strong notes, and a `ramp scale=` on notes that are there starts at 1 or above. At the ceiling use weight, then air, then the lanes that still have room. Turning notes down is the last step, on his word, never the answer ("hit harder", step 4). "Breathe" and "smaller" are the mirror: nothing in scope gets louder.
+- Read before writing: `show --vel` of the section, the bar before it and the bar after it. Note per bar: what sits on cell 0 (which cymbals, a kick), what sits under the backbeat (a kick on that cell, kicks on the cells beside it), where each phrase starts (section 4), and for each fill its span, the cell it opens on, its drums in order, pairs or alternation, the kick under it, and what follows it (a crash, a plain keeper hit, the end of the file).
+- A worked answer is one example, not a script to paste (EP 20). Its `# input` lines name the grid facts each cell, level and bar came from. Another file gives other cells: write your own rows from `show`. Never keep a block and swap the bar numbers, and never put two fills on one line.
+- Scope (EP 7): the named section is the scope. The bar before it (air, a build, the fill into it) and cell 0 after it are setup and landing: allowed, and each gets its words in the report. In every other section the kick row, the backbeat and the keeper stay, and a flaw there is named, not fixed.
+- Fills (EP 5, 8, 9, 10). Shape each fill from its own figure: (a) raise, never trim: no note ends under its old value; (b) a one beat fill is one rise into its top (`ramp scale=A-B`, A at 1 or above). A longer fill leans one digit on its strong notes (the first note of each pair on one drum, and in a two drum alternation the notes of the lower drum, which is the heavy voice) and also rises through its body, `ramp scale=1-B` with B up to 1.1 and small enough that no note passes the top; (c) the last note is the loudest, on the lowest drum of the fill. Its level: 127 for a section fill with air or the end of the song after it, 10 or more under the entrance that follows when there is no air, 113 to 117 for a pickup inside a phrase; (d) a fill of the named section that opens on the backbeat cell carries the backbeat there, at the section's backbeat level, when it also ends at that level (air or the end of the song after it); (e) drums, order and note count stay, no remap; (f) the kick: a fill of 2 beats or more inside the named scope with no kick under it gets one under its strong notes, and under its last note when that is at 127. With a riff track the kick goes on the `# riff` onsets of the span instead (a span with no riff onset is the band leaving room for the fill: under the strong notes). Look first at how the file's other fills carry the kick. A pickup keeps the kick it has.
+- Order of ops (EP 16 to 19): notes (bar blocks, `remap`, `delete`, the slide with `shift`), then level (`vel add=`), then gestures (`accent`, `ramp scale=`, `set=` on one note). One voice = its pitch: backbeats `lanes=38 v=100-127`, ghosts `lanes=38 v=1-62`, hand hats `lanes=42,46`. No `humanize` in these recipes: two bars differ by design (phrase, kick, fill), never by spread.
+- Cases (EP 21 to 24): no riff track: take the "without a riff track" branch where a step has one, skip what only reads `# riff` or lock, and say so (section 7). A fill in the last bar of the file has no landing. A lane the kit has no notes on: the nearest lane with notes, same number of voices.
+- Check after every apply, with `vibedrum diff ORIGINAL RESULT` and `show RESULT --vel` on the changed bars (the acceptance tests of the EP file). `# sections`: the named section at the same or a higher vel, or with more notes ("breathe": lower, or fewer), and its distance to the section before it not smaller. `# lanes`: 0 in the last column for the lanes of the section ("breathe": 0 louder). `# fills`: last within 5 of peak for every fill you touched, 10 or more between a pickup and a section fill, no two sequences alike. No `# bar N = bar M` line inside the section. `# bars changed`: the section plus the bars your report names. A failed line means another script from the same starting file.
+- Report: two or three lines read off the diff: what got louder, what was added or removed with counts, what changed outside the named section, what was skipped and why. Never "harder" or "bigger" for a change the diff shows as quieter.
 
-"Make the chorus bigger". Ladder: (1) the keeper one step wider, hand hats to a ridden crash by pitch, shaped, 127 on the first hit of the chorus only. One crash lane for the whole chorus: a second half on crash2 splits the letter. (2) Level, only with headroom: `vel SEL lanes=38 v=100-127 add=N` and `vel SEL lanes=36 add=N` (section 5, lever 8), ghosts out with `delete SEL lanes=38 v=1-62`, fill bars left out. (3) The bar before it smaller: the gap of section 6 or the drop below, reported as setup. (4) Only on his word: `half` feel, or kick/bar 16 in the last chorus. Default on a hat chorus: rung 1, plus rung 2 when there is room.
+"The breakdown should hit harder" (also "make the drop hit harder", "more impact"). Harder is entrance and weight: not busier, not a trim, and never an answer that only lowers. Never kicks into the holes of the groove bars: breakdown riffs come with silence between the notes [1]. Never a thinner keeper (section 5, lever 2). The default is steps 1 to 3 in one script:
+
+1. Entrance. Air: when the drums of the bar before the section run to the bar line, their last eighth goes silent (section 6: a plain bar by `delete`, a fill by the slide, so it ends early on its top). Already a gap there: nothing to do. First hit: cell 0 gets what it lacks of kick, crash and the section's keeper cymbal, so two cymbals and the kick sound together, only here (section 4).
+2. Weight in the groove bars. Hands that are not plain are cleared first, as part of this step and never as the answer: hand hats and ride under a china or crash keeper go, ghosts go (`delete SEL lanes=42,46,51,53`, `delete SEL lanes=38 v=1-62`, fill bars left out). Then take the first of these that has room in this file. The next one is his "more":
+   - Headroom: `vel SEL lanes=36 add=N`, `vel SEL lanes=38 v=100-127 add=N` (section 5, lever 8).
+   - A kick under the hand hits that have none, written into the kick row copied from `show`. With a riff track: under the backbeat and under each keeper hit, on every such cell where `# riff` has an onset and the kick row is empty (lock rises with it; riff onsets with no kick and no hand hit are lock repair, section 7: name them, do not add them). Without a riff track: under the backbeat only, and only where the kick plays on both cells beside it (the snare sits inside a burst). A hit standing in a rest keeps its hole.
+   - No cell for a kick: the lowest tom with notes joins the keeper and the kick on beat 1 of every bar after the section's first where the kick plays (the snare hand is free there, and a tom on the same beat of most bars does not turn up in `# fills:`).
+   Grade what you add, so the section rises and bars that were equal in `show` do not stay equal: one digit under the kick's level in the first phrase (or half), at that level from the second phrase start on, and that phrase start gets one crash in place of the keeper hit (section 4).
+3. The fills of the section, by the fills rule: the pickups inside it, its last fill with the kick under it, and the rise of the fill before it (setup, reported, no kick added there).
+4. Keeper contrast is not part of the default: only when he asks for it (dynamics in the cymbal, or "more" after everything above). Weak positions only (beats 2 and 4 under a half feel), down 15 to 25, never beat 1, the backbeat cell or a phrase start: `vel SEL beats=2-3 lanes=52 add=-20`. It turns notes down, so `diff` lists the lane as quieter: report it in those words. `# sections` must still show the section at or above its starting vel and no closer to the section before it: take fewer positions (beat 2 only) before a smaller amount.
+
+"More" after the default, in this order: the next lever of step 2; a whole beat of air; then, on his word, `half` feel when the section is `normal`, the section before it lowered, step 4.
 ```vd
-# said back: chorus = bars 5-8. bigger = the hand moves from the closed hat to a ridden crash, shaped, first hit at full. kick and backbeat already reach 127, so no level step
-# input: hat eighths flat at 98, feel half, fill at 8:3-5. a hat row that already has a shape carries it over: skip the accent
-remap bars=5-8 lanes=42,46 to=crash1
-accent bars=5-8 lanes=49 grid=16 pattern=8-7-
-vel bars=5 beats=1-1.25 lanes=49 set=127
+# said back: breakdown = bars 5-8. harder = a bigger entrance (the bar 4 fill ends an eighth early and loses two notes, crash added to the china + kick of bar 5), a kick under the backbeats where the guitar plays and the kick did not, its fills raised to the section and ending on their tops. nothing gets quieter
+# input: riff track, lock 81% in bars 5-8. bars 5-8 all at 127 except the fills at 98. bar 5 cell 0 = china + kick, no crash (crash1 has notes in bar 1). phrases 5-6 and 7-8
+#   backbeat on cell 8: a riff onset and no kick in bars 5 and 7, bar 6 has its kick. every china hit on a riff onset has its kick
+#   bar 4 fill 3-5 runs to the bar line: snare 8-9, tom3 10-11, tom5 12-15, no kick under it, the guitar plays through
+#   bar 6 pickup 4-5: snare 12-13, tom5 14-15, kick under 12 and 14. bar 8 fill 3-5: snare 8-11, tom5 12-15, no kick, riff on 8, 10, 12, 14, 15, last bar of the file
+# 1 entrance. air: the eighth comes out of tom5 (four notes, the most), its last two notes slide to cells 12-13. first hit: crash1 joins china + kick
+delete bars=4 beats=4-4.5 lanes=43
+shift bars=4 beats=4.5-5 lanes=43 ticks=-240
+bar 5 grid=16
+crash1 49  |9--- ---- ---- ----|
+# 2 weight. kick row copied from show, one cell changed: cell 8, where the riff row has an x and the kick row had none. an 8 in phrase 1, a 9 in phrase 2
+# riff     |xx-x --xx xx-- xx--|
+kick 36    |99-9 --99 89-- 99--|
+bar 7 grid=16
+kick 36    |99-9 --99 99-- 99--|
+# the second phrase start: one crash in place of the china, the stack stays with the entrance
+remap bars=7 beats=1-1.25 lanes=52 to=crash1
+# 3 fills, each from its own figure. bar 8 ends the section and the file: backbeat on cell 8, first note of each pair 8, last note 9, kick on the riff onsets of the span, then a rise through the middle
+bar 8 grid=16
+snare 38   |---- ---- 9787 ----|
+tom5 43    |---- ---- ---- 8789|
+# riff     |x--x xx-x x-x- x-xx|
+kick 36    |9--9 99-9 9-9- 9-99|
+ramp bars=8 beats=3.25-4.75 lanes=38,43 scale=1-1.1
+# bar 6 pickup, one beat: one rise through both pairs, top on the last tom5, a digit under the section fills
+ramp bars=6 beats=4-5 lanes=38,43 scale=1.04-1.18
+# bar 4 (setup, outside the section): its toms rise into the last note before the air, the snare notes stay as written
+ramp bars=4 beats=3.5-4.5 lanes=47,43 scale=1-1.3
 ```
-On the demo (bars 5-8): crash1 127 on bar 5 beat 1, then 112 on the beat and 98 between, sd 9.4. Kick, backbeat, the bar 8 fill and the hats of bars 1-4 unchanged, 248 notes, the header gains a letter for bars 5-8.
+What this example does not show. No riff track: step 2 reads the kick row instead of `# riff` (a kick under the backbeat where cells 7 and 9 hold a kick), and the kick under the last fill goes under the first note of each pair and under its last note. A pickup that alternates two drums (snare, floor tom, snare, floor tom) takes the rise on both and 8 more on the floor tom (`vel ... lanes=43 add=8`). A longer section has more groove bars and phrases: each bar gets its own kick row, and each later phrase differs from the one before in something added (the crash on its start, the next lever of step 2 in the last one). Outside the section only the rise into the air: every point added there closes the gap to the section.
 
-"The verse should breathe". Notes come out of the hands, the kick is the riff and stays. Ladder: (1) ghosts, when there are any: `vel SEL lanes=38 v=1-62 scale=0.75`, then `delete SEL beats=1-3 lanes=38 v=1-62`, fill bars left out. (2) The keeper one step down: one rung (china to closed hat, by pitch, then `vel ... add=` into the hat's range of lever 1) or one rate step (eighths to quarters with the mask idiom below), then its shape. (3) An eighth of air where the phrase turns: `delete bars=N beats=4.5-5 lanes=42,46` in the last bar of the phrase, not where a fill runs through it. (4) Kicks on cells with no `# riff` onset come out, in bar blocks copied from `show`. No riff track: skip and say so. (5) Only on his word: `half` feel, or a sparser riff.
+"Make the chorus bigger". Width first, then level, then its fill. (1) Entrance and keeper: the hand moves one step wider (section 5, lever 1), hand hats to a ridden crash by pitch, one crash lane for the whole chorus, its first hit at 127 with the kick. The row keeps its level and leans one digit where the crash meets a kick or the backbeat, so each bar's row follows that bar's kick. (2) Level, only with headroom: `vel SEL lanes=38 v=100-127 add=N`, `vel SEL lanes=36 add=N`, ghosts out with `delete SEL lanes=38 v=1-62`, fill bars left out. (3) The fill that ends the chorus comes up to the new keeper (fills rule: a longer one also takes its lean and its kick). "More": air before the chorus (section 6). On his word: `half` feel, kick/bar 16 in the last chorus.
 ```vd
-# said back: verse = bars 1-8. space = the hat goes from eighths to quarters with beat 1 leaning. no ghosts in the file, no riff track so the kick row stays, both fills run to the bar line so no air is cut there
-# input: hat eighths flat at 98, fills at 4:4-5 and 8:3-5
+# said back: chorus = bars 5-8. bigger = the hand moves from the closed hat to a ridden crash that leans where the kick and the backbeat land, crash + kick at full on its first hit, the backbeat up to 127, the fill that ends it up to the new keeper
+# input: bars 5-8 hat eighths flat at 98, hat + kick on bar 5 cell 0, half feel with the backbeat on cell 8 at 118 (9 of headroom), kick at 127
+#   kick under the eighth cells 0, 6, 8, 10 in bars 5, 7 and 8, and under 0, 6, 8, 12, 14 in bar 6
+#   fill 8:4-5 in pairs (snare 12-13, tom3 14-15) at 98, the hat stops under it. a section entrance follows it with no air
+remap bars=5-8 lanes=42,46 to=crash1
+# crash rows: 8 on the cells listed above, the old 7 elsewhere, 9 on the first hit
+bar 5 grid=16
+crash1 49  |9-7- 7-8- 8-8- 7-7-|
+bar 6 grid=16
+crash1 49  |8-7- 7-8- 8-7- 8-8-|
+bar 7 grid=16
+crash1 49  |8-7- 7-8- 8-8- 7-7-|
+bar 8 grid=16
+crash1 49  |8-7- 7-8- 8-8- ----|
+vel bars=5-8 lanes=38 v=100-127 add=9
+# the fill is one beat: one rise into its top on the last tom3, 10 under the 127 entrance that follows
+ramp bars=8 beats=4-5 lanes=38,47 scale=1.05-1.19
+```
+
+"The verse should breathe". The mirror: notes and level come out of the hands, nothing gets louder, the kick is the riff and stays. (1) The keeper one rate step down (eighths to quarters, mask idiom below) or one rung down by pitch. (2) Ghosts out of the first half of each bar. (3) What is left of the keeper shaped downward: its weak beats 15 to 25 under the strong ones, each phrase relaxing toward its turn. "More": an eighth of air at a phrase turn that has no fill (`delete bars=N beats=4.5-5 lanes=42,46`); with a riff track, kicks on cells with no `# riff` onset come out. On his word: `half` feel, a sparser riff.
+```vd
+# said back: verse = bars 1-8. breathe = the hat goes from eighths to quarters with beats 2 and 4 softer, each phrase relaxes toward its fill, the ghosts leave the first half of each bar. nothing gets louder, kick and backbeat stay
+# input: hat eighths flat at 98, ghosts at 30, half feel so beats 2 and 4 are the weak quarters, phrases 1-4 and 5-8, both end in a fill (bars 4 and 8) so no air is cut, no riff track so the kick row stays
 # mask idiom: digit 1 on the "and" hats, then delete what is marked
 accent bars=1-8 lanes=42 grid=16 pattern=--1-
 delete bars=1-8 lanes=42 v=1-20
-vel bars=1-8 beats=1-1.25 lanes=42 add=14
+delete bars=1-3,5-7 beats=1-3 lanes=38 v=1-62
+vel bars=1-8 beats=2-3 lanes=42 add=-16
+vel bars=1-8 beats=4-5 lanes=42 add=-16
+# each phrase starts at its level and relaxes, the second one deeper, so no two bars come out the same
+ramp bars=1-4 lanes=42 scale=1-0.87
+ramp bars=5-8 lanes=42 scale=1-0.78
 ```
-On the demo (bars 1-8): hat quarters, 112 on beat 1 and 98 after (shoulder against tip, on purpose), sd 6.1, 29 hats out, nothing else moved.
 
-"Build into the breakdown". The last bar before it becomes a build (2 bars when he says long): keeper out, hits per beat 1, 2, 4, one rise, 127 on the last hit, landing on the crash + kick that open the breakdown. The kick row stays when lock is 70%+ or there is no riff track; in a free bar it goes to quarters then eighths. Plain groove bar: the block of section 6, and for a dead stop its cells 14-15 left empty. A bar that already ends in a fill keeps the fill as the top of the build, and only the front is written:
+"Build into the breakdown". The last bar before it becomes a build (2 bars when he says long): keeper out, hits per beat 1, 2, 4, one rise that ends on its top. The entrance must still stand over it (EP 6): the top stops 10 or more under the crash + kick it lands on, or reaches 127 with an eighth of air after it. The kick of the groove part stays when lock is 70%+ or there is no riff track (in a free bar it goes to quarters, then eighths); under a fill that has none it follows the fills rule (f). Plain groove bar: clear the keeper row and write snare and the lowest tom with notes in unison at 1 then 2 hits per beat (snare a digit over the tom), the snare alone at 4 per beat, in rising digits 5, 6, 7, 8, the lowest snare over the ghost wall of 60 (EP 13). A bar that already ends in a fill keeps the fill as the top of the build, and only the front is written:
 ```vd
-# said back: build into the breakdown = bar 4. the hat stops, the snare builds from a quarter to eighths in front of the fill that is already there, one rise across the bar, last hit at 127. kick row untouched, the fill keeps its drums
-# input: bar 4 = hat eighths, fill on beats 3-5 flat at 98 (snare sixteenths, then two toms). bar 5 = breakdown with crash + kick on cell 0
+# said back: build into the breakdown = bar 4. the hat stops, the snare builds 1 then 2 hits per beat in front of the fill that is there, a kick goes under the fill, and the fill rises to a top 10 under the crash + kick of bar 5
+# input: no riff track. bar 4 = hat eighths on beats 1-2, no snare there, kick on cells 0, 2, 5, 7, fill on beats 3-5 at 98 in pairs (snare 8-9, tom3 10-11, tom5 12-13 and 14-15), no kick under it. bar 5 opens on crash + kick at 127 with no air, so the top is 116, not 127
 bar 4 grid=16
 hh 42      |---- ---- ---- ----|
-# beats 3 and 4 of the snare row are copied from show
-snare 38   |7--- 7-7- 7777 ----|
-accent bars=4 lanes=38,48,43 grid=16 pattern=8787
-ramp bars=4 lanes=38,48,43 scale=0.7-1.13
-vel bars=4 beats=4.75-5 lanes=43 set=127
+# beat 1 one hit, beat 2 two hits, below the fill's level. x keeps the fill notes that are there
+snare 38   |5--- 6-6- xx-- ----|
+# kick row copied from show, a kick added under the first note of each pair of the fill
+kick 36    |9-9- -9-9 9-9- 9-9-|
+ramp bars=4 beats=3-5 lanes=38,47,43 scale=1-1.18
 ```
-On the demo (bar 8): snare 78, 91, 98, then 104, 94, 111, 100, tom2 117, 105, tom5 123, 127. 4 hats out, 3 snare notes in, `# fills:` now reads 8:2-5, bar 9 untouched.
 
-"The breakdown should hit harder" (also "make the drop hit harder", "more impact"). Harder is not busier and, at the ceiling, not louder. Never add kicks in the rests: breakdown riffs come with silence between the notes [1]. Never thin the keeper for this request (section 5, lever 2). Ladder:
-
-1. Plain hands, when they are not: hand hats and ride out under a china or crash keeper (`delete SEL lanes=42,46,51,53`), ghosts out (`delete SEL lanes=38 v=1-62`, fill bars left out of `bars=`).
-2. Level, when kick or backbeat has headroom: `vel SEL lanes=36 add=N`, `vel SEL lanes=38 v=100-127 add=N` (section 5, lever 8). No `min=` floor: on `lanes=snare` it lifts the fill snares and leaves their toms behind.
-3. Contrast in the keeper, when it is flat or all inside digit 9: down 20, beats 1 and 3 back up 10 (15 on average), each phrase start that holds the keeper back to 127. A keeper that already has 10 or more between its downbeats and the rest: skip.
-4. The fills that belong to the breakdown, when they sit a digit or more under its groove: the pickups inside it, the fill that ends it, and the fill into it (the bar before: setup, reported). Hand shape on each, then the rise by rank: a one beat pickup `ramp scale=0.94-1.04` (the smallest lift: its gesture is the hand shape, its small rise is not one to report), the ending fill `scale=0.92-1.1`, the fill into the breakdown `scale=0.92-1.13` plus 127 on its last hit, the only 127 among them. No notes added, no kick written under the hands.
-5. On "more": an eighth of silence before it (section 6, second block below). A stack on its first hit only under the rule of section 4.
-6. Only on his word: `half` feel when the section is `normal` (lever 3), a slower keeper (lever 2, with its crash mark), the section before it lowered.
-
-Default = the first two rungs with room. Everything at 127, no hats, no ghosts (the demo): rungs 3 and 4.
+"Add a drop before the last chorus" (or before the breakdown). Air is the lever: the bar before it empties. One crash + kick stab on cell 0 left ringing (a crash at 8, a step under the landing, never the keeper of the section to come), silence, a pickup, then the crash + kick already on the next cell 0 (write one at a section start that has none). The kicks that go are riff kicks: that is the drop, and it is counted in the report. A bar that holds a fill: the fill stays whole as the pickup and the silence runs from the stab to its first note. The groove has stopped, so that first note is a pickup note, not a backbeat, the top stays 10 or more under the entrance, and no kick goes under the fill: the feet come back on the entrance. Plain bar: a two note pickup on cells 14-15 (`snare 38 |---- ---- ---- --78|` in the bar block) and the kicks deleted with `beats=1.25-5`. On his word: the whole bar empty, or 2 bars of kick only (`delete bars=3-4 lanes=hat,ride,cym,snare,tom`, role names on purpose).
 ```vd
-# said back: breakdown = bars 5-8. kick, backbeat and china are already at 127, so harder = contrast in the keeper and the fills lifted by rank. no notes added, kick row and backbeat untouched
-# input: china quarters flat at 127, feel half, no hats, no ghosts. fills flat at 98: 4:3-5 runs into the breakdown, 6:4-5 is a pickup, 8:3-5 ends it. phrase starts: bar 5 (crash1 + kick), bar 7 (china + kick)
-# rung 3, level: keeper down
-vel bars=5-8 lanes=52 add=-20
-# rung 3, gestures: beats 1 and 3 lean back up, the phrase start that holds a china returns to full
-vel bars=5-8 beats=1-1.25 lanes=52 add=10
-vel bars=5-8 beats=3-3.25 lanes=52 add=10
-vel bars=7 beats=1-1.25 lanes=52 set=127
-# rung 4: hand shape on each fill window (the window holds fill notes only), then the rise by rank: pickup, ending fill, the fill into the breakdown and its last hit
-accent bars=4,8 beats=3-5 lanes=38,48,43 grid=16 pattern=8787
-accent bars=6 beats=4-5 lanes=38,43 grid=16 pattern=8787
-ramp bars=6 beats=4-5 lanes=38,43 scale=0.94-1.04
-ramp bars=8 beats=3-5 lanes=38,48,43 scale=0.92-1.1
-ramp bars=4 beats=3-5 lanes=38,48,43 scale=0.92-1.13
-vel bars=4 beats=4.75-5 lanes=43 set=127
-```
-On the demo (breakdown 9-16, phrase starts 9 and 13, fills 8:3-5, 12:4-5, 16:3-5), read back with `show --vel`: china 117 on beats 1 and 3, 107 on 2 and 4, 127 on bar 13 beat 1, sd 5.7 (was 0). Bar 12 pickup: 105, 95, 113, 102. Bar 16: 103, 93, 109, 98, 115, 103, 120, 108. Bar 8: 103, 93, 110, 99, 116, 105, 123, 127. Peaks 113, 120, 127 in rank order, hand gaps 10 to 12, the leading hand rises 17 in bar 16 and 20 in bar 8, tom2 and tom5 both still in bars 8 and 16, 248 notes before and after. To report: the bar 8 fill changed outside the section, bar 16 ends the file so its fill has no landing, kick and backbeat stay flat at 127 (not asked), the gap is on offer.
-```vd
-# rung 5, said back: an eighth of silence before the breakdown. the bar 4 fill runs to the bar line, so its first eighth goes and the rest slides an eighth earlier: tail, drums and velocities stay, two snare notes go
-delete bars=4 beats=3-3.5 lanes=38
-shift bars=4 beats=3.5-5 lanes=38,48,43 ticks=-240
-```
-On the demo (bar 8, applied to the result above): snare 110, 99, tom2 116, 105, tom5 123, 127 on cells 8 to 13, cells 14 and 15 empty in every lane, 246 notes, crash1 + kick on bar 9 as before.
-
-"Add a drop before the last chorus" (or before the breakdown). The bar before it empties: one crash + kick stab on cell 0 left ringing, silence, a pickup, then the crash + kick that are already on the next cell 0 (at a section start with no crash, write one). The stab is a crash at 8, a step under the landing so the entrance stays the biggest hit, and never the keeper of the section to come (EP 4). The kicks that go are riff kicks: that is the drop, and it is counted in the report. A bar that holds a fill: the fill stays whole as the pickup, shaped as the fill into a section, and the silence runs from the stab to its first note. Plain bar: write `snare 38 |---- ---- ---- --68|` in the bar block as the pickup and delete the kicks with `beats=1.25-5`. On his word: the whole bar empty, or 2 bars of kick only (`delete bars=3-4 lanes=hat,ride,cym,snare,tom`, role names on purpose).
-```vd
-# said back: drop before the last chorus = bar 4. one crash + kick stab on beat 1 left ringing, then silence up to the fill, which stays whole as the pickup and rises into the landing. the hats and the kicks after beat 1 of bar 4 go
-# input: bar 4 = hat eighths, kick on cell 0 and later cells, fill on beats 3-5 flat at 98. bar 5 = chorus with crash + kick on cell 0
+# said back: drop before the last chorus = bar 4. one crash + kick stab on beat 1 left ringing, silence up to the fill, the fill stays whole as the pickup with no kick under it and rises to a top 10 under the entrance. the hats and 3 kicks of bar 4 go
+# input: bar 4 = hat eighths on beats 1-2, kick on cells 0, 2, 5, 7, fill on beats 3-5 at 98 (snare, tom3, tom5). bar 5 = chorus with crash + kick on cell 0 at 127
 bar 4 grid=16
 crash1 49  |8--- ---- ---- ----|
 delete bars=4 lanes=42,46
 delete bars=4 beats=1.25-3 lanes=36
-accent bars=4 beats=3-5 lanes=38,48,43 grid=16 pattern=8787
-ramp bars=4 beats=3-5 lanes=38,48,43 scale=0.92-1.13
-vel bars=4 beats=4.75-5 lanes=43 set=127
+ramp bars=4 beats=3-5 lanes=38,47,43 scale=1-1.18
 ```
-On the demo (bar 8, drop before the breakdown): crash1 112 + kick 127 on cell 0, cells 1 to 7 empty, fill 103, 93, 110, 99, 116, 105, 123, 127, bar 9 untouched. 1 crash in, 4 hats and 3 kicks out.
 
-"Make the second verse different from the first". The kick row and the backbeat stay, one thing changes in the hands (EP 1). Take the first that fits: (1) another keeper lane as a side step, hat to ride for cleaner or to hh_open for dirtier, never the keeper of the section that follows (EP 4). (2) A late entry: `delete bars=5-6 lanes=42,46`, one crash in place of the keeper on the re-entry. (3) Ghosts one step louder: `vel SEL lanes=38 v=1-62 add=10 max=58`, the clamp is the ghost wall (EP 9). (4) The other feel, only on a feel word. After a remap a flat row gets a two beat shape and an answer in every second bar.
-```vd
-# said back: verse 2 = bars 5-8, a repeat of verse 1. different = the hand moves from the hat to the ride, with a shape and an answer on the "and" of 4 in bar 6. kick row, backbeat and the bar 8 fill stay
-# input: hat eighths flat at 98, show printed "# bar 5 = bar 1"
-remap bars=5-8 lanes=42 to=ride
-accent bars=5-8 lanes=51 grid=16 pattern=8-6-7-6-
-vel bars=6 beats=4.5-4.75 lanes=51 add=14
-```
-On the demo (bars 5-8): ride 112, 84, 98, 84 twice per bar, bar 6 ends on 98 where bars 5 and 7 have 84, fill and kick unchanged, 248 notes. Bar 5 has no crash after the bar 4 fill: mentioned, not added (EP 17).
+"Make the second verse different from the first". Not more and not less: the average stays about level, the kick row and the backbeat stay, one thing changes in the hands. The first that fits: (1) another keeper lane as a side step, hat to ride for cleaner or to hh_open for dirtier, by `remap`, never the keeper of the section that follows (EP 6), with a lean read from this file as in the chorus recipe; (2) a late entry: the keeper out for the first 2 bars (`delete bars=5-6 lanes=42,46`) and one crash in place of its first hit on the re-entry; (3) ghosts one step louder: `vel SEL lanes=38 v=1-62 add=10 max=58`, the clamp is the ghost wall (EP 13); (4) the other feel, only on a feel word. Afterwards the bars of that verse must not fold onto each other in `show --vel`: an answer in every second bar or a lift into its fill, 15 or more, makes the difference.
 
 ## Sources
 
@@ -292,4 +290,4 @@ On the demo (bars 5-8): ride 112, 84, 98, 84 twice per bar, bar 6 ends on 98 whe
 
 Tried and unreadable (truncated or paywalled), so nothing here rests on them: MusicRadar Periphery II track by track, MusicRadar Periphery guide to recording drums, Modern Drummer June 2019 Halpern feature, Prog Report Halpern interview.
 
-Unconfirmed working numbers of section 10 (trial findings and demo checks, no outside source): the keeper contrast amounts (20, 10, 127 on phrase starts), the fill rise ranges by rank, the build ramp 0.65 to 1.3, the 0.75 ghost scale, the shapes `8-7-` and `8-6-7-6-`.
+Unconfirmed working numbers of section 10 (two blind trials and checks with `vibedrum diff`, no outside source): the order of the levers, the kick under the hand hits and the floor tom on beat 1 with their grading by phrase (8 then 9), the kick under a fill, the fill tops (127, 10 under the entrance, 113 to 117), the rises `1-1.1`, `1.04-1.18`, `1.05-1.19`, `1-1.18` and `1-1.3`, the keeper contrast of 15 to 25 on the weak positions, the breathe amounts (16 down, phrases to 0.87 and 0.78), the build digits 5, 6, 7, 8.
