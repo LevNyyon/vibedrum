@@ -97,6 +97,7 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 ## The show header
 
 ```
+# vibedrum: ppq 480, 16 bars, ...               ppq = ticks per quarter note, the unit of shift and humanize time
 # lanes: pitch lane count vel min/avg/max sd     how each lane is played. sd near 0 = machine gun.
 # sections: name bars keeper feel kick/bar vel lock
 # fills: 8:3-5 16:1-5                            bar:fromBeat-toBeat
@@ -106,6 +107,16 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 - feel: `normal` (snare on 2 and 4), `half` (snare on 3), `double` (snare on every offbeat eighth), `blast`, `open` (no snare), `odd` (not 4/4), `other`.
 - lock: share of riff onsets that land together with a kick.
 - Sections and fills are heuristics. They are candidates, the reader of the grid has the last word.
+
+How the engine decides, so the knowledge docs can rely on it:
+
+- Tolerance: a note up to ppq/24 ticks early or late (20 at 480 ppq) still belongs to its grid line, its bar and its `beats=` window.
+- keeper: the cymbal family with the most hits in the bar, 2 at least. All hh lanes count as `hh`, all ride lanes as `ride`.
+- feel: read from snare hits of velocity 60 or more, at eighth note resolution. Quieter snare hits are ghosts and do not change the feel.
+- A section starts at a marker, a meter change, a keeper change that lasts 2 bars (3 when the keeper disappears), or a feel change that holds in 3 of the next 4 bars. Sections with the same keeper and feel share a letter.
+- A fill candidate is a beat with more tom hits than that beat usually has in its section, or at least 2 more snare hits than usual. Kick only fills, chokes, stops and unison stabs are not detected.
+- `show` prints grid=96 for the rare bar that no grid up to 48 divides.
+- A script runs strictly top to bottom, grid rows included: a `copy` placed after a bar block copies the edited bar.
 
 ## CLI
 
