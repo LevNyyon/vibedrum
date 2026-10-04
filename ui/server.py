@@ -73,7 +73,11 @@ class H(BaseHTTPRequestHandler):
             self.send(400, json.dumps({'error': str(e)}))
 
     def do_POST(self):
+        u = urlparse(self.path)
         try:
+            if u.path == '/api/copy':   # the version onto the macOS clipboard as a file, through `vibedrum clip`
+                vibedrum('clip', version(u.query))
+                return self.send(200, json.dumps({'ok': True}))
             if self.path == '/api/drop':
                 n = int(self.headers.get('Content-Length', 0))
                 if not 0 < n <= 20_000_000: raise ValueError('expected a MIDI file under 20 MB')

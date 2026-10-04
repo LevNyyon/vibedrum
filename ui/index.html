@@ -45,6 +45,7 @@
   <span id="song"></span>
   <nav id="tabs"></nav>
   <button class="btn" id="play" hidden>▶ Play</button>
+  <button class="btn" id="copy" hidden>Copy MIDI</button>
   <span id="diff"></span>
   <span class="spacer"></span>
   <button class="btn" id="paste">Paste from clipboard</button>
@@ -102,7 +103,7 @@ async function refresh() {
 
 async function draw() {
   const has = !!state.song;
-  $('empty').hidden = has; $('rollwrap').hidden = !has; $('legend').hidden = !has; $('play').hidden = !has;
+  $('empty').hidden = has; $('rollwrap').hidden = !has; $('legend').hidden = !has; $('play').hidden = $('copy').hidden = !has;
   $('song').textContent = state.song || '';
   $('tabs').replaceChildren(...state.versions.map(v => {
     const b = document.createElement('button');
@@ -205,6 +206,12 @@ $('play').onclick = () => {
   audio.play().then(() => { $('play').textContent = '■ Stop'; msg(''); }, e => msg('Could not play: ' + e.message, true));
 };
 audio.onended = stop;
+
+// copy: the selected version onto the Mac clipboard as a .mid file (the server runs `vibedrum clip`), ready to paste
+$('copy').onclick = async () => {
+  try { await api('/api/copy?f=' + encodeURIComponent(sel), { method: 'POST' }); msg(`Copied ${vname(sel)} as a MIDI file. Paste it into Finder or your DAW.`); }
+  catch (e) { msg(e.message, true); }
+};
 
 // in: drop a file anywhere, or ⌘V a .mid copied in Finder (the server reads the clipboard through `vibedrum clip`)
 async function upload(f) {
