@@ -15,13 +15,25 @@ Genres live in knowledge packs, one folder each. Djent came first.
 - `tools/check_knowledge.py`: runs every `vd` example of the knowledge docs through the engine. Run it after editing a doc.
 - `demo/`: a stiff 16 bar djent song to try things on.
 
-Build and check:
+Start, build and check:
 
-    cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build && ./build/vibedrum selfcheck
+    sh start.sh
+
+It builds the engine on the first run (clang++ only, no cmake needed), runs the self-check, starts the page and opens it.
+Safe to run twice, it just reopens the page. Developers can also build with
+`cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build && ./build/vibedrum selfcheck`.
+
+## Starting for him
+
+He may not be technical. Never ask him to run a command or edit a file, do it yourself.
+When he says start, or opens the project: run `sh start.sh` with run_in_background and the longest timeout (it serves the page until stopped),
+then tell him in one line to drop a MIDI file on the page, or to say what he wants written from scratch.
+If the page says it lost the server, run `sh start.sh` again. `README.md` is the page he reads, keep it true when behaviour changes.
 
 ## Handling a request
 
 1. Get the file: a path he gives, `./build/vibedrum clip` (the .mid he copied in Finder), or the newest `work/<song>.v0.mid` he dropped in the UI.
+   No file at all: `mkdir -p work`, `vibedrum new work/<name>.v0.mid --bars N --bpm B`, then write the part as v1.
 2. `vibedrum show FILE --summary`, then `show FILE --bars A-B` for the bars the request touches. Short songs: just `show FILE`.
 3. Read `knowledge/editing-principles.md`. Pick the genre pack (`knowledge/README.md`), read its `vocabulary.md` for the words of the request, then the detail doc it points to.
 4. Decide scope and interpretation yourself. The fill and section lists are candidates, check them against the grid.
