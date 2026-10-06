@@ -23,7 +23,8 @@ kick 36    |9-99 --9- 9--9 9-9-|
   The pitch may be left out when the lane name is unambiguous.
 - `grid=G`: one cell is 1/G of a whole note. 16 = sixteenths, 32 = thirty-seconds,
   12 = eighth triplets, 24 = sixteenth triplets (sextuplets), 48 = thirty-second triplets.
-  Cells per bar = G * num / den: 16 in 4/4 at grid=16, 14 in 7/8, 32 in 4/4 at grid=32.
+  Cells per bar = G * num / den, rounded up when it is not whole: 16 in 4/4 at grid=16, 14 in 7/8 at grid=16, 32 in 4/4 at grid=32,
+  11 in 7/8 at grid=12 (10.5 rounded up, half of the last cell lies past the bar line).
 - A beat is always a quarter note. 4/4 spans beats 1 to 5, 7/8 spans 1 to 4.5.
 - Cell characters: `-` rest. `1` to `9` hit, velocity = digit * 14 (9 = 127).
   `x` hit that keeps its velocity (on an empty cell: the lane's typical velocity).
@@ -81,6 +82,9 @@ Ops, run top to bottom, each sees the result of the ones before:
 | `copy from=17-20 to=21-28 [lanes=...]` | replace the destination bars (those lanes) with the source bars, tiled |
 | `insert at=N count=K` | K empty bars before bar N (N = bars + 1 appends). Everything from bar N on moves later in every track: notes, tempo, meter, titles. The new bars take the meter of the bar before them; at bar 1 the song keeps its start tempo and meter. Later lines use the new bar numbers. |
 
+`copy` takes its source as it was before that op, so source and destination may overlap. A bar in both lists is replaced like any other
+destination bar. `copy from=1-4 to=3-8` gives bars 3 and 4 the old bars 1 and 2, bars 5 and 6 the old bars 3 and 4 (not the new ones), bars 7 and 8 the old bars 1 and 2.
+
 Fill spans and sections are computed once from the song as it was before the script.
 An `insert` shifts the fill spans with their bars.
 
@@ -100,7 +104,7 @@ title 5
 
 `apply` prints one line per lane: `+` notes added, `-` notes removed, `~` changes made to existing notes, then `notes: before -> after`.
 A note changed by three ops counts three times. A remap shows as `-1` on the old lane and `+1` on the new one.
-The song cannot grow: there is no op that adds a bar, changes the tempo or the meter.
+Only `insert` adds bars. No op changes the tempo or the meter.
 
 ## Lanes (built in General MIDI map)
 
@@ -121,7 +125,8 @@ The song cannot grow: there is no op that adds a bar, changes the tempo or the m
 | 41 | tom6 (low floor) | | |
 
 A custom map replaces this: `--map file`, lines of `<pitch> <lane> [gm pitch for playback]`.
-The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, china, splash, stack. Anything else is perc.
+The lane name prefix sets the role, capitals do not matter: kick, snare, rim, hh (hat and hihat too), tom, ride, crash, china, splash, stack. Anything else is perc.
+The page reads `work/<song>.map` as the map of every version of that song (the song is the file name before `.v<n>.mid`), so a map file written there reaches the page and Play too.
 
 ## The show header
 
@@ -139,6 +144,12 @@ The lane name prefix sets the role: kick, snare, rim, hh, tom, ride, crash, chin
 ```
 
 - Without a riff track there is no `# riff` line, no riff row and no lock column. Rules about lock then do not apply: say so instead of guessing.
+- Two more lines can follow the first one. They mean the engine may be looking at the wrong track, so read them before anything else:
+  `# WARNING: no channel 10 notes and no track named drums, guessed drum track N "name", use --track N if that is wrong`:
+  the file has no track the engine can recognise as drums, so it took the busiest track, which may be a bass or a guitar. Do not edit it blind:
+  ask which track is the drums, or find it yourself and pass `--track N` to every `show` and `apply`.
+  `# also drums: track N "name" (K notes), use --track N`: one line for every other track that has channel 10 notes. `show`, `apply` and the page use only the track named
+  in the first line, so these notes are not shown and not edited. To edit one, `apply` with `--track N` (one apply per track, each on the output of the last). The page does not take `--track`.
 
 - keeper: the cymbal family that keeps time in the section (hh, hh_open, ride, china, crash1, ...), `none` when no cymbal does (a tom groove, a stop).
 - feel: `normal` (snare on 2 and 4), `half` (snare on 3), `double` (snare on every offbeat eighth), `blast` (8 or more snare hits in the bar), `open` (no snare), `empty` (no drums), `odd` (not 4/4), `other`.

@@ -20,6 +20,7 @@ struct Song {
     int format = 1, ppq = 480;
     std::vector<Track> tracks;
     int drumTrack = 0, drumCh = -1;      // drumCh -1: every channel of that track
+    bool drumGuess = false;              // pickParts found no channel 10 and no drum name and took the busiest track, show warns
     int riffTrack = -1, riffCh = -1;     // the pitched part shown as the read only riff row, -1: none
     std::map<int, std::string> lanes;    // pitch -> lane name (the drum map)
     std::map<int, int> gm;               // pitch -> General MIDI pitch, for playback of custom maps
@@ -27,12 +28,12 @@ struct Song {
 
 Song parseMidi(const std::vector<uint8_t>& bytes);        // throws std::runtime_error
 std::vector<uint8_t> writeMidi(const Song&);
-Song newSong(int bars, double bpm, int num, int den);
-void loadMap(Song&, const std::string& text);             // lines "<pitch> <lane> [gm pitch]", replaces the GM default
+Song newSong(int bars, double bpm, int num, int den);      // throws std::runtime_error outside bars 1..10000, bpm 20..400, num 1..32, den 1..64 power of two
+void loadMap(Song&, const std::string& text);             // lines "<pitch> <lane> [gm pitch]", replaces the GM default, throws on a pitch outside 0..127
 void pickParts(Song&, int drumTrack = -1, int riffTrack = -1);   // -1: guess
 
 bool isDrum(const Song&, int track, const Note&);
-std::vector<Bar> bars(const Song&);
+std::vector<Bar> bars(const Song&);                       // throws past 100000 bars
 std::vector<std::pair<int, int>> tempos(const Song&);     // tick, microseconds per quarter
 std::vector<Section> sections(const Song&);
 std::vector<Span> fills(const Song&);

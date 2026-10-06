@@ -29,10 +29,13 @@ std::string lane(const Song& s, int pitch) {
     return it != s.lanes.end() ? it->second : "p" + std::to_string(pitch);
 }
 
-std::string role(const std::string& lane) {
+std::string low(std::string s) { for (auto& c : s) c = tolower((unsigned char)c); return s; }
+
+std::string role(const std::string& name) {   // the lane name as written in the map, any case
+    auto lane = low(name);
     if (starts(lane, "kick")) return "kick";
     if (starts(lane, "snare") || starts(lane, "rim")) return "snare";
-    if (starts(lane, "hh")) return "hat";
+    if (starts(lane, "hh") || starts(lane, "hat") || starts(lane, "hihat")) return "hat";
     if (starts(lane, "tom")) return "tom";
     if (starts(lane, "ride")) return "ride";
     for (auto p : {"crash", "china", "splash", "stack"}) if (starts(lane, p)) return "cym";
@@ -76,6 +79,7 @@ struct Reader {
 };
 
 void putVar(std::vector<uint8_t>& o, uint32_t v) {
+    if (v > 0x0fffffff) throw std::runtime_error("midi: file too long");   // a MIDI delta is 4 bytes at most, a negative one lands here too
     uint8_t buf[5]; int n = 0;
     do { buf[n++] = v & 0x7f; v >>= 7; } while (v);
     while (n--) o.push_back(buf[n] | (n ? 0x80 : 0));
@@ -148,7 +152,7 @@ An analyze(const Song& s) {
         std::map<std::string, int> fam; int strong = 0, any = 0; unsigned e8 = 0;
         for (auto n : a.drum[b]) {
             auto l = lane(s, n->pitch), r = role(l);
-            if (r == "hat" || r == "ride" || r == "cym") fam[r == "hat" ? (l.find("open") != l.npos ? "hh_open" : "hh") : r == "ride" ? "ride" : l]++;   // open hats are their own keeper: closed verse, open chorus
+            if (r == "hat" || r == "ride" || r == "cym") fam[r == "hat" ? (low(l).find("open") != l.npos ? "hh_open" : "hh") : r == "ride" ? "ride" : l]++;   // open hats are their own keeper: closed verse, open chorus
             if (r == "snare") { any++; if (n->vel >= 60) { strong++; e8 |= 1u << (std::lround((n->tick - a.B[b].start) / (s.ppq / 2.0)) & 31); } }
         }
         std::string k = "none"; int kn = std::max(2, a.B[b].len / s.ppq / 2) - 1;
@@ -247,15 +251,18 @@ bool isDrum(const Song& s, int track, const Note& n) { return track == s.drumTra
 void pickParts(Song& s, int drumTrack, int riffTrack) {
     int nt = s.tracks.size();
     auto ch9 = [&](int i) { int n = 0; for (auto& x : s.tracks[i].notes) n += x.ch == 9; return n; };
+    s.drumGuess = false;
     if (drumTrack < 0 || drumTrack >= nt) {   // guess: channel 10 wins, then a track named like drums, then the busiest
         int best = 0; drumTrack = -1;
         for (int i = 0; i < nt; i++) if (ch9(i) > best) { best = ch9(i); drumTrack = i; }
         for (int i = 0; i < nt && drumTrack < 0; i++) {
-            std::string n = s.tracks[i].name;
-            for (auto& c : n) c = tolower(c);
+            auto n = low(s.tracks[i].name);
             if (n.find("drum") != n.npos || n.find("kit") != n.npos || n.find("perc") != n.npos) drumTrack = i;
         }
-        if (drumTrack < 0) for (int i = 0; i < nt; i++) if (drumTrack < 0 || s.tracks[i].notes.size() > s.tracks[drumTrack].notes.size()) drumTrack = i;
+        if (drumTrack < 0) {
+            for (int i = 0; i < nt; i++) if (drumTrack < 0 || s.tracks[i].notes.size() > s.tracks[drumTrack].notes.size()) drumTrack = i;
+            s.drumGuess = nt > 0;
+        }
     }
     s.drumTrack = std::max(0, drumTrack);
     s.drumCh = nt && ch9(s.drumTrack) && ch9(s.drumTrack) < (int)s.tracks[s.drumTrack].notes.size() ? 9 : -1;   // format 0: drums share a track
@@ -282,7 +289,9 @@ Song parseMidi(const std::vector<uint8_t>& bytes) {
         Track tr; int tick = 0; uint8_t status = 0;
         std::map<int, std::vector<size_t>> open;   // channel and pitch -> sounding notes, oldest first
         while (r.p < end) {
-            tick += r.var();
+            int64_t d = r.var();
+            if (tick + d > (1 << 30)) throw std::runtime_error("midi: file too long");
+            tick += (int)d;
             uint8_t c = r.u8();
             if (c == 0xff) {
                 uint8_t type = r.u8(); auto data = r.take(r.var());
@@ -344,6 +353,9 @@ std::vector<uint8_t> writeMidi(const Song& s) {
 }
 
 Song newSong(int nbars, double bpm, int num, int den) {
+    if (nbars < 1 || nbars > 10000) throw std::runtime_error("new: bars must be 1 to 10000");
+    if (!(bpm >= 20 && bpm <= 400)) throw std::runtime_error("new: bpm must be 20 to 400");
+    if (num < 1 || num > 32 || den < 1 || den > 64 || (den & (den - 1))) throw std::runtime_error("new: sig must be 1 to 32 over 1, 2, 4, 8, 16, 32 or 64");
     Song s;
     int us = int(60e6 / bpm), lg = 0;
     while ((1 << lg) < den) lg++;
@@ -357,32 +369,42 @@ Song newSong(int nbars, double bpm, int num, int den) {
 }
 
 void loadMap(Song& s, const std::string& text) {
-    s.lanes.clear(); s.gm.clear();
+    std::map<int, std::string> lanes; std::map<int, int> gm;   // the song keeps its map when a line is bad
     std::istringstream in(text);
+    int ln = 0;
+    auto pitch = [&](const std::string& t) {   // a MIDI data byte, anything else would write a broken file
+        char* e; long p = strtol(t.c_str(), &e, 10);
+        if (*e || p < 0 || p > 127) throw std::runtime_error("map line " + std::to_string(ln) + ": pitch '" + t + "' is not a number from 0 to 127");
+        return (int)p;
+    };
     for (std::string line; std::getline(in, line);) {
+        ln++;
         auto w = words(line.substr(0, line.find('#')));
         if (w.size() < 2) continue;
-        s.lanes[atoi(w[0].c_str())] = w[1];
-        if (w.size() > 2) s.gm[atoi(w[0].c_str())] = atoi(w[2].c_str());
+        int p = pitch(w[0]);
+        lanes[p] = w[1];
+        if (w.size() > 2) gm[p] = pitch(w[2]);
     }
+    s.lanes = lanes; s.gm = gm;
 }
 
 std::vector<Bar> bars(const Song& s) {
     std::vector<std::array<int, 3>> sigs;   // tick, num, den
-    int end = 0;
+    long end = 0;
     for (auto& t : s.tracks) {
-        end = std::max(end, t.end);
-        for (auto& n : t.notes) end = std::max(end, n.tick + 1);
-        for (auto& e : t.events)
-            if (e.bytes.size() >= 4 && e.bytes[0] == 0xff && e.bytes[1] == 0x58 && e.bytes[2]) sigs.push_back({e.tick, e.bytes[2], 1 << e.bytes[3]});
+        end = std::max(end, (long)t.end);
+        for (auto& n : t.notes) end = std::max(end, (long)n.tick + 1);
+        for (auto& e : t.events)   // a denominator past 2^7 is nonsense, the event is ignored
+            if (e.bytes.size() >= 4 && e.bytes[0] == 0xff && e.bytes[1] == 0x58 && e.bytes[2] && e.bytes[3] <= 7) sigs.push_back({e.tick, e.bytes[2], 1 << e.bytes[3]});
     }
     std::sort(sigs.begin(), sigs.end());
-    std::vector<Bar> out; int tick = 0, num = 4, den = 4; size_t i = 0;
+    std::vector<Bar> out; long tick = 0; int num = 4, den = 4; size_t i = 0;
     while (tick < end) {
+        if (out.size() >= 100000) throw std::runtime_error("midi: file too long");
         while (i < sigs.size() && sigs[i][0] <= tick) { num = sigs[i][1]; den = sigs[i][2]; i++; }
         int len = std::max(1, num * 4 * s.ppq / den);
         if (i < sigs.size() && sigs[i][0] < tick + len) len = sigs[i][0] - tick;   // a signature change cuts the bar short
-        out.push_back({tick, len, num, den}); tick += len;
+        out.push_back({(int)tick, len, num, den}); tick += len;
     }
     return out;
 }
@@ -426,7 +448,14 @@ std::string show(const Song& s, int from, int to, ShowOpts opt) {
 
     if (opt.header) {
     o << "# vibedrum: ppq " << s.ppq << ", " << nb << " bars, drums: track " << s.drumTrack << " \""
-      << (s.drumTrack < (int)s.tracks.size() ? s.tracks[s.drumTrack].name : "") << "\", " << total << " notes\n# timesig:";
+      << (s.drumTrack < (int)s.tracks.size() ? s.tracks[s.drumTrack].name : "") << "\", " << total << " notes\n";
+    if (s.drumGuess) o << "# WARNING: no channel 10 notes and no track named drums, guessed drum track " << s.drumTrack << " \"" << s.tracks[s.drumTrack].name << "\", use --track N if that is wrong\n";
+    for (int i = 0; i < (int)s.tracks.size(); i++) {   // channel 10 notes on a track that was not taken as the drums
+        int k = 0;
+        for (auto& x : s.tracks[i].notes) k += i != s.drumTrack && x.ch == 9;
+        if (k) o << "# also drums: track " << i << " \"" << s.tracks[i].name << "\" (" << k << " notes), use --track " << i << "\n";
+    }
+    o << "# timesig:";
     for (int b = 0; b < nb; b++) if (!b || a.B[b].num != a.B[b - 1].num || a.B[b].den != a.B[b - 1].den) o << " " << b + 1 << ":" << a.B[b].num << "/" << a.B[b].den;
     o << "\n# tempo:";
     for (size_t i = 0; i < T.size() && i < 12; i++) o << " " << std::max(1, barOf(a.B, T[i].first) + 1) << ":" << num(60e6 / T[i].second);
@@ -437,7 +466,7 @@ std::string show(const Song& s, int from, int to, ShowOpts opt) {
     if (anyMarker) o << "\n";
     if (s.riffTrack >= 0) o << "# riff: track " << s.riffTrack << " \"" << s.tracks[s.riffTrack].name << "\"\n";
     o << "# lanes: pitch lane count vel min/avg/max sd\n";
-    std::string unmapped;
+    std::string unmapped, noRole;
     for (int p : pitches) {
         auto& v = vels[p]; double sum = 0, sq = 0;
         for (int x : v) sum += x;
@@ -446,8 +475,10 @@ std::string show(const Song& s, int from, int to, ShowOpts opt) {
         o << "#   " << p << " " << lane(s, p) << " " << v.size() << " " << *std::min_element(v.begin(), v.end()) << "/" << num(std::round(avg)) << "/"
           << *std::max_element(v.begin(), v.end()) << " " << num(std::round(std::sqrt(sq / v.size()) * 10) / 10) << "\n";
         if (!s.lanes.count(p)) unmapped += " " + std::to_string(p);
+        else if (role(lane(s, p)) == "perc" && !starts(low(lane(s, p)), "perc")) noRole += " " + lane(s, p);
     }
     if (!unmapped.empty()) o << "# unmapped:" << unmapped << "\n";
+    if (!noRole.empty()) o << "# note: lane names with no known role, read as perc, fills and keeper ignore them:" << noRole << "\n";
     o << "# map:";
     for (auto& [p, l] : s.lanes) o << (p == s.lanes.begin()->first ? " " : ", ") << p << " " << l;
     o << "\n# sections: name bars keeper feel kick/bar vel" << (s.riffTrack >= 0 ? " lock" : "") << "\n";
@@ -619,11 +650,12 @@ std::string apply(Song& song, const std::string& script) {
     int ch = s.drumCh >= 0 ? s.drumCh : 9;
     if (s.drumCh < 0 && !notes.empty()) ch = notes[0].ch;
     std::map<std::string, std::array<int, 3>> stat;   // lane -> added, removed, changed
-    size_t before = notes.size();
     int nb0 = nb;
 
     auto fail = [&](const std::string& m) { throw std::runtime_error("line " + std::to_string(ln) + ": " + m); };
     auto drum = [&](const Note& n) { return isDrum(s, s.drumTrack, n); };
+    auto drums = [&] { return std::count_if(notes.begin(), notes.end(), drum); };
+    auto before = drums();
     auto pitchOf = [&](const std::string& name) {   // lane name or pitch number -> pitch. Of several pitches on one lane, the most used wins.
         if (!name.empty() && isdigit(name[0])) { int p = atoi(name.c_str()); if (p > 127) fail("bad pitch " + name); return p; }
         int best = -1, bestN = -1;
@@ -662,6 +694,24 @@ std::string apply(Song& song, const std::string& script) {
     std::istringstream in(script);
     for (std::string line; std::getline(in, line);) {
         ln++;
+        auto tw = words(line);
+        if (!tw.empty() && tw[0] == "title") {   // a MIDI marker on the bar start: the DAW shows it, and the analysis starts a section there. The text keeps any # or |.
+            curBar = -1;
+            int b = tw.size() > 1 ? atoi(tw[1].c_str()) - 1 : -1;
+            if (b < 0 || b >= nb) fail("title needs a bar of the song, title N Some name, the song has " + std::to_string(nb) + " bars");
+            std::string text;
+            for (size_t i = 2; i < tw.size(); i++) text += (i > 2 ? " " : "") + tw[i];
+            for (auto& tr : s.tracks) for (size_t i = tr.events.size(); i-- > 0;) {
+                auto& e = tr.events[i];
+                if (e.bytes.size() >= 2 && e.bytes[0] == 0xff && e.bytes[1] == 0x06 && barOf(B, e.tick + tol) == b) { tr.events.erase(tr.events.begin() + i); stat["title"][1]++; }
+            }
+            if (!text.empty()) {
+                Event m{B[b].start, {0xff, 0x06}};
+                m.bytes.insert(m.bytes.end(), text.begin(), text.end());
+                s.tracks[0].events.push_back(m); stat["title"][0]++;
+            }
+            continue;
+        }
         line = line.substr(0, line.find('#'));
         auto bar1 = line.find('|');
         if (bar1 != line.npos) {   // a grid row
@@ -707,22 +757,6 @@ std::string apply(Song& song, const std::string& script) {
             continue;
         }
         curBar = -1;
-        if (w[0] == "title") {   // a MIDI marker on the bar start: the DAW shows it, and the analysis starts a section there
-            int b = w.size() > 1 ? atoi(w[1].c_str()) - 1 : -1;
-            if (b < 0 || b >= nb) fail("title needs a bar of the song, title N Some name, the song has " + std::to_string(nb) + " bars");
-            std::string text;
-            for (size_t i = 2; i < w.size(); i++) text += (i > 2 ? " " : "") + w[i];
-            for (auto& tr : s.tracks) for (size_t i = tr.events.size(); i-- > 0;) {
-                auto& e = tr.events[i];
-                if (e.bytes.size() >= 2 && e.bytes[0] == 0xff && e.bytes[1] == 0x06 && barOf(B, e.tick + tol) == b) { tr.events.erase(tr.events.begin() + i); stat["title"][1]++; }
-            }
-            if (!text.empty()) {
-                Event m{B[b].start, {0xff, 0x06}};
-                m.bytes.insert(m.bytes.end(), text.begin(), text.end());
-                s.tracks[0].events.push_back(m); stat["title"][0]++;
-            }
-            continue;
-        }
         auto op = OPS.find(w[0]);
         if (op == OPS.end()) fail("unknown op '" + w[0] + "'");
         auto allowed = words(op->second);
@@ -755,7 +789,9 @@ std::string apply(Song& song, const std::string& script) {
             if (at < 0 || at > nb) fail("insert at=" + arg["at"] + " is outside the song, use 1 to " + std::to_string(nb + 1));
             if (k < 1 || k > 999) fail("insert count= takes 1 to 999 bars");
             Bar m = B[at ? at - 1 : 0];   // the new bars take the meter of the bar before them
-            int t0 = at < nb ? B[at].start : B[nb - 1].start + B[nb - 1].len, d = k * (m.num * 4 * s.ppq / m.den);
+            long add = (long)k * (m.num * 4 * s.ppq / m.den);
+            if (B[nb - 1].start + B[nb - 1].len + add > (1L << 30)) fail("insert would make the song longer than 2^30 ticks");
+            int t0 = at < nb ? B[at].start : B[nb - 1].start + B[nb - 1].len, d = (int)add;
             for (auto& tr : s.tracks) {
                 for (auto& n : tr.notes) if (n.tick + tol >= t0) n.tick += d;
                 // at bar 1 the start state (tempo, meter, names, programs) stays at tick 0 for the new bars. Titles move with their bar.
@@ -772,13 +808,13 @@ std::string apply(Song& song, const std::string& script) {
         if (w[0] == "copy") {
             need("from"); need("to");
             auto src = barList(arg["from"]), dst = barList(arg["to"]);
+            if (src.empty() || dst.empty()) fail("copy needs at least one bar in from= and in to=");
             std::vector<std::vector<Note>> snap(src.size());   // source notes, ticks relative to their bar
             for (auto& n : notes) if (drum(n) && laneOk(n)) {
                 int b = barOf(B, n.tick + tol);
                 for (size_t i = 0; i < src.size(); i++) if (src[i] == b) { snap[i].push_back(n); snap[i].back().tick -= B[b].start; }
             }
-            for (size_t i = 0; i < dst.size(); i++) {
-                if (std::find(src.begin(), src.end(), dst[i]) != src.end()) continue;
+            for (size_t i = 0; i < dst.size(); i++) {   // the source is already snapshotted, so a destination that overlaps it is replaced like any other
                 std::set<int> dead;
                 for (size_t k = 0; k < notes.size(); k++) if (drum(notes[k]) && laneOk(notes[k]) && barOf(B, notes[k].tick + tol) == dst[i]) dead.insert(k);
                 erase(dead);
@@ -863,7 +899,13 @@ std::string apply(Song& song, const std::string& script) {
         } else if (w[0] == "remap") {
             need("to");
             int p = pitchOf(arg["to"]);
-            for (auto& [i, k] : hit) if (notes[i].pitch != p) { stat[lane(s, notes[i].pitch)][1]++; notes[i].pitch = p; stat[lane(s, p)][0]++; }
+            std::set<std::pair<int, int>> taken; std::set<int> dead;   // (tick, pitch) of the target lane
+            for (auto& n : notes) if (drum(n) && n.pitch == p) taken.insert({n.tick, p});
+            for (auto& [i, k] : hit) if (notes[i].pitch != p) {
+                if (!taken.insert({notes[i].tick, p}).second) { dead.insert(i); continue; }   // already a hit there: drop this one, two identical notes would be written
+                stat[lane(s, notes[i].pitch)][1]++; notes[i].pitch = p; stat[lane(s, p)][0]++;
+            }
+            erase(dead);
         }
     }
 
@@ -872,7 +914,7 @@ std::string apply(Song& song, const std::string& script) {
     for (auto& [l, c] : stat) if (c[0] || c[1] || c[2]) o << l << ": +" << c[0] << " -" << c[1] << " ~" << c[2] << "\n";
     if (nb != nb0) o << "bars: " << nb0 << " -> " << nb << "\n";
     if (o.str().empty()) o << "no changes\n";
-    o << "notes: " << before << " -> " << notes.size() << "\n";
+    o << "notes: " << before << " -> " << drums() << "\n";
     song = std::move(s);
     return o.str();
 }

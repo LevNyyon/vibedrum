@@ -67,13 +67,14 @@ const RH = 26, SECH = 20, HEAD = 40;   // row height, title strip, title strip +
 const key = n => n[0] + ':' + n[2], end = b => b.length ? b.at(-1)[0] + b.at(-1)[1] : 0;
 let state = { song: null, stamp: -1, versions: [] }, sel = null, follow = true, cache = {}, busy = false, lost = false, msgTimer;
 
-async function api(path, opts) {
-  const r = await fetch(path, opts);
+async function api(path, opts = {}) {
+  // the server answers a POST only with this header: another site's page cannot add it without a preflight the server refuses
+  const r = await fetch(path, { ...opts, headers: { ...(opts.method === 'POST' && { 'X-Vibedrum': '1' }), ...opts.headers } });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'server said ' + r.status);
   return j;
 }
-const notes = f => cache[f] ??= api('/api/notes?f=' + encodeURIComponent(f));
+const notes = f => cache[f] ??= api('/api/notes?f=' + encodeURIComponent(f)).catch(e => { delete cache[f]; throw e; });   // a failure is not kept, the next try asks again
 const vname = f => 'v' + f.match(/\.v(\d+)\.mid$/)[1];
 
 function msg(text, err) {
@@ -87,33 +88,36 @@ async function refresh() {
   try {
     const s = await api('/api/state');
     if (lost) { lost = false; msg('Server is back'); }
-    if (s.song !== state.song || s.stamp !== state.stamp) {
+    if (s.song !== state.song || s.stamp !== state.stamp || JSON.stringify(s.versions) !== JSON.stringify(state.versions)) {   // a deleted old version moves no stamp
       const was = sel;
-      if (s.song !== state.song || follow || !s.versions.includes(sel)) sel = s.versions.at(-1);
+      if (s.song !== state.song) follow = true;   // a new song starts at its newest version, and its next versions follow
+      if (follow || !s.versions.includes(sel)) { sel = s.versions.at(-1); follow = true; }   // landing on the newest means following it
       if (sel !== was) stop();
       state = s; cache = {};
       await draw();
     }
   } catch (e) {
     lost = e instanceof TypeError;   // fetch itself failed: the server is down, not a bad answer
-    msg(lost ? 'Lost the server. Start it again with: cd ~/vibedrum && python3 ui/server.py' : e.message, true);
+    msg(lost ? 'Lost the server. Tell Claude "restart the page", or run sh start.sh in the vibedrum folder.' : e.message, true);
   }
   busy = false;
 }
 
+let drawSeq = 0;
 async function draw() {
-  const has = !!state.song;
+  const mine = ++drawSeq, has = !!state.song;
   $('empty').hidden = has; $('rollwrap').hidden = !has; $('legend').hidden = !has; $('play').hidden = $('copy').hidden = !has;
   $('song').textContent = state.song || '';
   $('tabs').replaceChildren(...state.versions.map(v => {
     const b = document.createElement('button');
     b.textContent = vname(v); b.className = v === sel ? 'on' : '';
-    b.onclick = () => { sel = v; follow = v === state.versions.at(-1); stop(); draw(); };
+    b.onclick = () => { sel = v; follow = v === state.versions.at(-1); stop(); draw().catch(e => msg(e.message, true)); };
     return b;
   }));
   if (!has) return $('diff').replaceChildren();
   const i = state.versions.indexOf(sel);
   const [cur, prev] = await Promise.all([notes(sel), i > 0 ? notes(state.versions[i - 1]) : null]);
+  if (mine !== drawSeq) return;   // a newer draw started while this one waited for the notes, it paints, not this
   roll(cur, prev, i > 0 ? vname(state.versions[i - 1]) : null);
 }
 
@@ -130,6 +134,22 @@ function align(cur, prev) {
     if (sc > score) { score = sc; best = moved; }
   }
   return best;
+}
+
+// which note of the old version each note of the new one came from, and the old notes that went. Same onset and pitch is the same note.
+// Of the rest, same pitch within ppq/24 ticks is too (humanize and shift stay inside it), paired the way `vibedrum diff` does.
+function pairs(cur, old) {
+  const from = new Map(), tol = Math.floor(cur.ppq / 24), ord = (a, b) => a[2] - b[2] || a[0] - b[0];
+  const first = new Map(); for (const n of old) if (!first.has(key(n))) first.set(key(n), n);   // the first wins: a collision must not fake a velocity change
+  const now = new Set(cur.notes.map(key)), gone = old.filter(n => !now.has(key(n))).sort(ord), fresh = [];
+  for (const n of cur.notes) first.has(key(n)) ? from.set(n, first.get(key(n))) : fresh.push(n);
+  fresh.sort(ord);
+  const moved = new Set();
+  for (let i = 0, j = 0; i < gone.length && j < fresh.length;) {
+    if (gone[i][2] === fresh[j][2] && Math.abs(gone[i][0] - fresh[j][0]) <= tol) { from.set(fresh[j++], gone[i]); moved.add(gone[i++]); }
+    else if (ord(gone[i], fresh[j]) < 0) i++; else j++;
+  }
+  return [from, gone.filter(n => !moved.has(n))];
 }
 
 function roll(cur, prev, prevName) {
@@ -181,12 +201,12 @@ function roll(cur, prev, prevName) {
     return `<rect x="${(t * k).toFixed(1)}" y="${(y[p] + (RH - h) / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" ${paint}><title>${esc(tip)}</title></rect>`;
   };
 
-  // diff against the previous version, by onset and pitch, after lining up inserted bars
-  const old = prev && align(cur, prev), before = old && new Map(old.map(n => [key(n), n])), now = new Set(cur.notes.map(key));
-  let add = 0, del = 0, vel = 0;
-  if (old) for (const n of old) if (!now.has(key(n))) { del++; s += glyph(n, 'del'); }
+  // diff against the previous version, after lining up inserted bars
+  const [from, gone] = prev ? pairs(cur, align(cur, prev)) : [null, []];
+  let add = 0, del = gone.length, vel = 0;
+  for (const n of gone) s += glyph(n, 'del');
   for (const n of cur.notes) {
-    const o = before && before.get(key(n)), kind = !before ? 'same' : !o ? 'add' : o[3] !== n[3] ? 'vel' : 'same';
+    const o = from && from.get(n), kind = !from ? 'same' : !o ? 'add' : o[3] !== n[3] ? 'vel' : 'same';
     add += kind === 'add'; vel += kind === 'vel';
     s += glyph(n, kind, kind === 'vel' && o);
   }
@@ -201,9 +221,13 @@ function roll(cur, prev, prevName) {
 const audio = new Audio();
 function stop() { audio.pause(); $('play').textContent = '▶ Play'; }
 $('play').onclick = () => {
-  if (!audio.paused) return stop();
+  if (!audio.paused) return stop();   // paused is false from the click on, so this also cancels a play that is still loading
   audio.src = '/api/audio?f=' + encodeURIComponent(sel) + '&s=' + state.stamp;
-  audio.play().then(() => { $('play').textContent = '■ Stop'; msg(''); }, e => msg('Could not play: ' + e.message, true));
+  $('play').textContent = 'Loading…';   // the server renders the version first, a long song takes a second
+  audio.play().then(() => { $('play').textContent = '■ Stop'; msg(''); }, e => {
+    if (e.name === 'AbortError') return;   // stopped, or a new version loaded, while loading: not an error
+    stop(); msg('Could not play: ' + e.message, true);
+  });
 };
 audio.onended = stop;
 
@@ -214,10 +238,16 @@ $('copy').onclick = async () => {
 };
 
 // in: drop a file anywhere, or ⌘V a .mid copied in Finder (the server reads the clipboard through `vibedrum clip`)
-async function upload(f) {
-  msg('Loading ' + f.name + ' ...');
-  try { await api('/api/drop', { method: 'POST', headers: { 'X-Name': encodeURIComponent(f.name) }, body: f }); follow = true; msg('Loaded ' + f.name); refresh(); }
-  catch (e) { msg(e.message, true); }
+async function upload(files) {   // one after the other, so the last file dropped is the song the page ends on
+  const bad = []; let ok = 0;
+  for (const f of files) {
+    msg('Loading ' + f.name + ' ...');
+    try { await api('/api/drop', { method: 'POST', headers: { 'X-Name': encodeURIComponent(f.name) }, body: f }); ok++; }
+    catch (e) { bad.push(files.length > 1 ? f.name + ': ' + e.message : e.message); }
+  }
+  if (ok) { follow = true; refresh(); }
+  if (bad.length) msg((ok ? `Loaded ${ok} of ${files.length} files.\n` : '') + bad.join('\n'), true);
+  else msg(ok > 1 ? `Loaded ${ok} files` : 'Loaded ' + files[0].name);
 }
 async function paste() {
   try { const r = await api('/api/paste', { method: 'POST' }); follow = true; msg('Pasted ' + r.song); refresh(); }
@@ -227,12 +257,12 @@ document.addEventListener('dragover', e => { e.preventDefault(); document.body.c
 document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('over'); });
 document.addEventListener('drop', e => {
   e.preventDefault(); document.body.classList.remove('over');
-  const f = e.dataTransfer.files[0];
-  f ? upload(f) : msg('That drop had no file in it. Straight from a DAW, drag the region to the Desktop first, then drop that file here.', true);
+  const fs = [...e.dataTransfer.files];   // copied now, the list is emptied once the handler returns
+  fs.length ? upload(fs) : msg('That drop had no file in it. Straight from a DAW, drag the region to the Desktop first, then drop that file here.', true);
 });
 document.addEventListener('paste', e => { e.preventDefault(); paste(); });
 $('paste').onclick = paste;
-addEventListener('resize', () => state.song && draw());
+addEventListener('resize', () => state.song && draw().catch(e => msg(e.message, true)));
 setInterval(refresh, 1000); refresh();
 </script>
 </body>

@@ -35,9 +35,11 @@ Start vibedrum. Build it if needed and open the page. I will drop in a drum MIDI
 
 The first start takes about half a minute while it builds. Then a page opens at http://localhost:8790.
 
-Claude Code will ask permission before it runs commands. For this project that means `sh start.sh` and `./build/vibedrum`. Say yes.
+Claude Code will ask permission before it runs commands. For this project that means starting the page (`sh start.sh`) and running `./build/vibedrum`. Say yes.
 
-You can also start the page yourself: open Terminal in the vibedrum folder and run `sh start.sh`. Press Ctrl+C to stop it.
+**Starting the page yourself, without Claude.** Double click `start.command` in the vibedrum folder. It opens a Terminal window and then the page. Or open Terminal in the vibedrum folder and run `sh start.sh`.
+To stop it, press Ctrl+C in that Terminal window, or close the window. (When Claude started it for you, ask Claude to stop it.)
+If macOS says it cannot open `start.command` (this can happen after a ZIP download), right click the file, choose Open. The `sh start.sh` route works either way.
 
 ## Use it
 
@@ -50,7 +52,7 @@ You can also start the page yourself: open Terminal in the vibedrum folder and r
    - "After the intro I want a 2 bar break with big empty crashes, then the verse."
    - "More space in the verse."
    - "Remove the crash in bar 3."
-   - "Go back to version 2 and try that again, less busy."
+   - "Go back to version 2 and try that again, less busy." (Claude builds the new version from version 2. The page compares each version with the one before it in the tab row, so the new version shows against the previous one, not against version 2.)
    - "Write me a 4 bar pop punk beat at 180 bpm." (starts from nothing)
 4. **The page switches to the new version by itself.** The tabs v0, v1, v2 are every step. v0 is your original, and it is never changed.
 5. **Press Play** to hear any version. The sound is the basic Mac drum kit, enough to judge the pattern. Your own drum plugin will sound different.
@@ -62,10 +64,11 @@ Every version is also a .mid file in the `work` folder inside vibedrum. Nothing 
 
 ## If something goes wrong
 
-- **The page says "Lost the server".** Tell Claude "restart the page", or run `sh start.sh` in Terminal.
+- **The page says "Lost the server".** Tell Claude "restart the page", or double click `start.command`, or run `sh start.sh` in Terminal.
+- **Starting says something else is using http://localhost:8790.** Another program, or another copy of the vibedrum folder, is using the page's port. Quit that program, or press Ctrl+C in the Terminal window of the other copy, then start again.
 - **The page did not open.** Go to http://localhost:8790 in your browser.
 - **Pasting says there is no MIDI file on the clipboard.** Copy the .mid file in Finder (select it, Cmd+C). Notes copied inside a DAW can not be read.
-- **The drum names look wrong, like p47.** The page expects the standard General MIDI drum layout. Some drum plugins use their own. Tell Claude which plugin you use.
+- **The drum names look wrong, like p47.** The page expects the standard General MIDI drum layout. Some drum plugins use their own. Tell Claude which plugin you use: it can write a small map file for it (a list of which note is which drum) in the `work` folder, and the page picks it up.
 
 ## What it does and does not do
 

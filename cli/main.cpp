@@ -1,7 +1,12 @@
 // vibedrum CLI: show, json, apply, play, render, clip, new, selfcheck. Usage and format: docs/FORMAT.md
 #include "vibedrum.h"
 
+#include <sys/stat.h>
+
 #include <algorithm>
+#include <cctype>
+#include <cerrno>
+#include <cfloat>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -22,12 +27,36 @@ static std::vector<uint8_t> slurp(const std::string& path) {
     return {std::istreambuf_iterator<char>(*in), {}};
 }
 
+static void spit(const std::string& path, const std::vector<uint8_t>& bytes) {   // a file that did not get written must not look like success
+    std::ofstream f(path, std::ios::binary);
+    f.write((const char*)bytes.data(), bytes.size()); f.close();
+    if (!f) throw std::runtime_error("cannot write " + path);
+}
+
+// strict numbers for options: the whole string must parse and sit in lo..hi, so a typo is an error and never a silent 0
+static bool toLong(const std::string& v, long lo, long hi, long& n) {
+    char* end; errno = 0; n = strtol(v.c_str(), &end, 10);
+    return !v.empty() && !isspace((unsigned char)v[0]) && !*end && !errno && n >= lo && n <= hi;
+}
+static long whole(const std::string& name, const std::string& v, long lo, long hi, const std::string& hint = "") {
+    long n;
+    if (!toLong(v, lo, hi, n)) throw std::runtime_error("bad " + name + " " + v + hint);
+    return n;
+}
+static double number(const std::string& name, const std::string& v, double lo, double hi, const std::string& hint = "") {
+    char* end; double n = strtod(v.c_str(), &end);
+    if (v.empty() || isspace((unsigned char)v[0]) || *end || !(n >= lo && n <= hi)) throw std::runtime_error("bad " + name + " " + v + hint);   // !(..) also refuses nan
+    return n;
+}
+static double gainOf(const Args& a) { return a.opt.count("gain") ? number("--gain", a.opt.at("gain"), DBL_MIN, 8, ", use above 0 up to 8") : 1; }   // DBL_MIN: 0 < gain
+
 static vd::Song load(const Args& a, size_t which = 0) {
     if (a.pos.size() <= which) throw std::runtime_error("which MIDI file?");
     auto s = vd::parseMidi(slurp(a.pos[which]));
     if (a.opt.count("map")) { auto m = slurp(a.opt.at("map")); vd::loadMap(s, {m.begin(), m.end()}); }
     if (a.opt.count("track") || a.opt.count("riff")) {
-        int track = a.opt.count("track") ? atoi(a.opt.at("track").c_str()) : -1, riff = a.opt.count("riff") ? atoi(a.opt.at("riff").c_str()) : -1;
+        std::string hint = ", the file has " + std::to_string(s.tracks.size()) + " tracks"; long last = (long)s.tracks.size() - 1;
+        int track = a.opt.count("track") ? whole("--track", a.opt.at("track"), 0, last, hint) : -1, riff = a.opt.count("riff") ? whole("--riff", a.opt.at("riff"), 0, last, hint) : -1;
         vd::pickParts(s, track, riff);
         if (track >= 0 && s.drumTrack != track) throw std::runtime_error("--track " + std::to_string(track) + ": no such track");
         if (riff >= 0 && s.riffTrack != riff) throw std::runtime_error("--riff " + std::to_string(riff) + ": no such track, or it is the drum track");
@@ -37,16 +66,32 @@ static vd::Song load(const Args& a, size_t which = 0) {
 
 static std::vector<std::pair<int, int>> barRanges(const Args& a) {   // --bars 17-24 or 17 or 4-5,12-13. None: the whole song.
     std::vector<std::pair<int, int>> out;
-    std::string v = a.opt.count("bars") ? a.opt.at("bars") : "";
-    for (size_t p = 0; p < v.size();) {
+    if (!a.opt.count("bars")) return {{1, 0}};
+    const std::string& v = a.opt.at("bars");
+    for (size_t p = 0; p <= v.size();) {   // <=: an empty piece (empty value, trailing comma) is an error too
         size_t q = std::min(v.find(',', p), v.size());
         std::string part = v.substr(p, q - p); auto dash = part.find('-');
-        int from = atoi(part.c_str()), to = dash == part.npos ? from : atoi(part.c_str() + dash + 1);
-        if (from < 1 || to < from) throw std::runtime_error("bad --bars " + part + ", use 17-24 or 4-5,12-13");
-        out.push_back({from, to}); p = q + 1;
+        long from = 0, to = 0;
+        if (!toLong(part.substr(0, dash), 1, 1 << 30, from) || !(dash == part.npos ? (to = from, true) : toLong(part.substr(dash + 1), from, 1 << 30, to)))
+            throw std::runtime_error("bad --bars " + (part.empty() ? v : part) + ", use 17-24 or 4-5,12-13");
+        out.push_back({(int)from, (int)to}); p = q + 1;
     }
-    if (out.empty()) out.push_back({1, 0});
     return out;
+}
+
+static void checkBars(const vd::Song& s, const std::vector<std::pair<int, int>>& ranges) {   // to 0: the whole song
+    size_t n = vd::bars(s).size();
+    for (auto& [from, to] : ranges)
+        if (to > 0 && (size_t)to > n) throw std::runtime_error("bad --bars " + std::to_string(from) + (to == from ? "" : "-" + std::to_string(to)) + ", the song has " + std::to_string(n) + " bars");
+}
+
+// render opens -o with EraseFile: refuse an empty name, and an output that is the input file (same inode, so a symlink or a case change cannot fool it)
+static void checkOut(const Args& a) {
+    const std::string& o = a.opt.at("o");
+    if (o.empty()) throw std::runtime_error("-o needs a file name");
+    struct stat si, so;
+    if (!a.pos.empty() && a.pos[0] != "-" && !stat(a.pos[0].c_str(), &si) && !stat(o.c_str(), &so) && si.st_dev == so.st_dev && si.st_ino == so.st_ino)
+        throw std::runtime_error("-o " + o + " is the input file, it would be erased");
 }
 
 // ponytail: plays through the built in macOS General MIDI synth, enough to judge a pattern.
@@ -75,7 +120,7 @@ static int play(const vd::Song& s, int from, int to, bool loop, bool drumsOnly, 
             bool drum = vd::isDrum(s, ti, n);
             if (n.tick < t0 - early || n.tick >= t1 - early || (drumsOnly && !drum)) continue;
             auto gm = s.gm.find(n.pitch);
-            MIDINoteMessage m{UInt8(drum ? 9 : n.ch), UInt8(drum && gm != s.gm.end() ? gm->second : n.pitch), UInt8(std::max(1.0, n.vel * gain)), 0, Float32(n.dur / q)};
+            MIDINoteMessage m{UInt8(drum ? 9 : n.ch), UInt8(drum && gm != s.gm.end() ? gm->second : n.pitch), UInt8(std::clamp(int(n.vel * gain), 1, 127)), 0, Float32(n.dur / q)};
             MusicTrackNewMIDINoteEvent(tr, std::max(0, n.tick - t0) / q, &m);
         }
     }
@@ -137,6 +182,8 @@ static int render(const vd::Song& s, const std::string& out, int from, int to, b
     AudioComponent c = AudioComponentFindNext(nullptr, &d);
     AudioUnit u;
     if (!c || AudioComponentInstanceNew(c, &u)) throw std::runtime_error("no General MIDI synth");
+    ExtAudioFileRef f = nullptr;
+    struct Done { AudioUnit u; ExtAudioFileRef& f; ~Done() { if (f) ExtAudioFileDispose(f); AudioUnitUninitialize(u); AudioComponentInstanceDispose(u); } } done{u, f};   // also when a step throws
     UInt32 one = 1;
     AudioUnitSetProperty(u, kAudioUnitProperty_OfflineRender, kAudioUnitScope_Global, 0, &one, sizeof one);
     OSStatus err = AudioUnitSetProperty(u, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &fmt, sizeof fmt);
@@ -145,7 +192,6 @@ static int render(const vd::Song& s, const std::string& out, int from, int to, b
 
     AudioStreamBasicDescription wav{fmt.mSampleRate, kAudioFormatLinearPCM, kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked, 4, 1, 4, 2, 16, 0};
     CFURLRef url = CFURLCreateFromFileSystemRepresentation(nullptr, (const UInt8*)out.c_str(), out.size(), false);
-    ExtAudioFileRef f;
     err = ExtAudioFileCreateWithURL(url, kAudioFileWAVEType, &wav, nullptr, kAudioFileFlags_EraseFile, &f);
     CFRelease(url);
     if (!err) err = ExtAudioFileSetProperty(f, kExtAudioFileProperty_ClientDataFormat, sizeof fmt, &fmt);
@@ -164,7 +210,6 @@ static int render(const vd::Song& s, const std::string& out, int from, int to, b
         if ((err = AudioUnitRender(u, &fl, &ts, 0, N, (AudioBufferList*)&abl)) || (err = ExtAudioFileWrite(f, N, (AudioBufferList*)&abl)))
             throw std::runtime_error("render failed, OSStatus " + std::to_string(err));
     }
-    ExtAudioFileDispose(f); AudioUnitUninitialize(u); AudioComponentInstanceDispose(u);
     printf("rendered bars %d-%d to %s, %.1f s\n", from, to, out.c_str(), total / fmt.mSampleRate);
     return 0;
 #else
@@ -202,11 +247,12 @@ static std::string json(const vd::Song& s) {
 // With a file: put it on the clipboard, ready to paste into Finder or a DAW that accepts pasted files.
 // ponytail: file references only. Notes copied inside a DAW piano roll use a private format per DAW, add per DAW when needed.
 static int clip(const Args& a) {
-    auto run = [](const std::string& cmd) {
+    auto run = [](const std::string& cmd, int* status = nullptr) {
         std::string out; char buf[1024];
         FILE* p = popen(cmd.c_str(), "r");
         for (size_t n; p && (n = fread(buf, 1, sizeof buf, p)) > 0;) out.append(buf, n);
         int rc = p ? pclose(p) : 1;
+        if (status) *status = rc;
         while (!out.empty() && out.back() == '\n') out.pop_back();
         return rc ? std::string() : out;
     };
@@ -221,7 +267,9 @@ static int clip(const Args& a) {
     std::string q;
     for (char c : std::string(abs)) q += c == '\'' ? std::string("'\\''") : std::string(1, c);
     free(abs);
-    run("osascript -e 'on run argv' -e 'set the clipboard to POSIX file (item 1 of argv)' -e 'end run' '" + q + "'");
+    int rc;
+    run("osascript -e 'on run argv' -e 'set the clipboard to POSIX file (item 1 of argv)' -e 'end run' '" + q + "'", &rc);
+    if (rc) throw std::runtime_error("could not put " + a.pos[0] + " on the clipboard");
     printf("on the clipboard: %s\n", a.pos[0].c_str());
     return 0;
 }
@@ -297,26 +345,84 @@ static int selfcheck() {
     vd::apply(s, "title 1\n");
     CHECK(!vd::sections(s)[0].titled);
 
+    // hostile input is refused, not looped over or written broken
+    auto refused = [](auto f, const char* part = "") { try { f(); } catch (std::runtime_error& e) { return std::string(e.what()).find(part) != std::string::npos; } return false; };
+    auto far = vd::newSong(1, 120, 4, 4);
+    for (int k = 1; k <= 5; k++) far.tracks[1].events.push_back({k * 0x0fffffff, {0xff, 0x01}});
+    CHECK(refused([&] { vd::parseMidi(vd::writeMidi(far)); }, "too long"));   // a tick past 2^30
+    far.tracks[1].events.pop_back();
+    auto farBars = vd::parseMidi(vd::writeMidi(far));
+    CHECK(refused([&] { vd::bars(farBars); }, "too long"));   // under 2^30 ticks, over 100000 bars
+    auto odd = vd::newSong(4, 120, 4, 4);
+    for (int e : {8, 31}) odd.tracks[0].events.push_back({0, {0xff, 0x58, 5, uint8_t(e), 24, 8}});
+    CHECK(vd::bars(odd).size() == 4 && vd::bars(odd)[0].num == 4);   // a denominator past 2^7 is ignored
+    CHECK(refused([] { vd::newSong(4, 140, 4, 0); }, "sig") && refused([] { vd::newSong(4, 0, 4, 4); }, "bpm") && refused([] { vd::newSong(0, 140, 4, 4); }, "bars"));
+    CHECK(refused([&] { vd::loadMap(s, "36 kick\n200 snare\n"); }, "line 2"));
+    CHECK(refused([&] { vd::apply(s, "copy from= to=1\n"); }, "at least one bar"));
+
+    // copy onto bars that overlap its source tiles over them, nothing is skipped
+    auto cp = vd::newSong(4, 120, 4, 4);
+    std::string cs;
+    for (int b = 1; b <= 4; b++) cs += "bar " + std::to_string(b) + " grid=16\nkick 36 |" + std::string(b - 1, '-') + "9" + std::string(16 - b, '-') + "|\n";
+    vd::apply(cp, cs + "copy from=1-2 to=2-4\n");
+    std::vector<int> ticks;
+    for (auto& n : cp.tracks[cp.drumTrack].notes) ticks.push_back(n.tick);
+    CHECK((ticks == std::vector<int>{0, 1920, 3840 + 120, 5760}));
+
+    // remap onto a lane that already hits at that tick drops the moved note, no identical pair is written
+    auto r = vd::newSong(1, 120, 4, 4);
+    vd::apply(r, "bar 1 grid=16\nhh 42 |9999 9999 9999 9999|\nhh_open 46 |---- 9--- ---- 9---|\n");
+    auto out = vd::apply(r, "remap lanes=hh to=hh_open\n");
+    CHECK(count(r, 46, 46) == 16 && count(r, 42, 42) == 0 && out.find("hh: +0 -16") != std::string::npos && out.find("notes: 18 -> 16") != std::string::npos);
+
+    // a # in a title is text, a non drum channel is not counted, a drum map name in capitals keeps its role
+    vd::apply(s, "title 1 Verse #2\n");
+    CHECK(vd::sections(s)[0].name == "Verse #2");
+    auto m = vd::newSong(1, 120, 4, 4);
+    m.drumCh = 9; m.tracks[1].notes.push_back({0, 100, 60, 80, 0});
+    CHECK(vd::apply(m, "bar 1 grid=16\nkick 36 |9--- ---- ---- ----|\n").find("notes: 0 -> 1") != std::string::npos);
+    auto cap = vd::newSong(1, 120, 4, 4);
+    vd::loadMap(cap, "50 Kick\n36 HiHat\n");   // hat sorts above kick, with the roles lost it would be pitch order, 50 first
+    cap.tracks[1].notes = {{0, 10, 50, 100, 9}, {0, 10, 36, 100, 9}};
+    CHECK(vd::rows(cap)[0].first == 36);
+
+    // no channel 10 and no drum name: the guess is flagged, a second channel 10 track is mentioned
+    vd::Song gs; vd::Track bass, lead, k1, k2;
+    bass.name = "Bass"; bass.notes = {{0, 10, 40, 90, 0}}; lead.name = "Lead"; lead.notes = {{0, 10, 60, 90, 0}, {480, 10, 62, 90, 0}};
+    gs.tracks = {bass, lead};
+    vd::pickParts(gs);
+    CHECK(gs.drumGuess && gs.drumTrack == 1 && vd::show(gs).find("# WARNING: no channel 10") != std::string::npos);
+    vd::pickParts(gs, 0);
+    CHECK(!gs.drumGuess && vd::show(gs).find("# WARNING") == std::string::npos);
+    k1.name = "Kick"; k1.notes = {{0, 10, 36, 90, 9}, {480, 10, 36, 90, 9}}; k2.name = "Snare"; k2.notes = {{240, 10, 38, 90, 9}};
+    gs.tracks = {k1, k2};
+    vd::pickParts(gs);
+    CHECK(!gs.drumGuess && gs.drumTrack == 0 && vd::show(gs).find("# also drums: track 1 \"Snare\" (1 notes), use --track 1") != std::string::npos);
+
     puts("selfcheck ok");
     return 0;
 }
 
 int main(int argc, char** argv) {
     Args a; std::string cmd = argc > 1 ? argv[1] : "";
-    for (int i = 2; i < argc; i++) {
-        std::string x = argv[i];
-        if (x == "--summary" || x == "--loop" || x == "--drums-only" || x == "--vel") a.opt[x.substr(2)] = "1";
-        else if (x.rfind("--", 0) == 0 && i + 1 < argc) a.opt[x.substr(2)] = argv[++i];
-        else if (x == "-o" && i + 1 < argc) a.opt["o"] = argv[++i];
-        else a.pos.push_back(x);
-    }
     auto opt = [&](const char* k, const char* def) { return a.opt.count(k) ? a.opt[k] : std::string(def); };
     try {
-        auto ranges = barRanges(a);
+        for (int i = 2; i < argc; i++) {
+            std::string x = argv[i];
+            if (x == "--summary" || x == "--loop" || x == "--drums-only" || x == "--vel") a.opt[x.substr(2)] = "1";
+            else if (x.rfind("--", 0) == 0 || x == "-o") {
+                if (i + 1 >= argc) throw std::runtime_error(x + " needs a value");   // else it would pass as a file name
+                a.opt[x == "-o" ? "o" : x.substr(2)] = argv[++i];
+            }
+            else a.pos.push_back(x);
+        }
+        bool ranged = cmd == "show" || cmd == "play" || cmd == "render";   // --bars means something else in new, and nothing elsewhere
+        auto ranges = ranged ? barRanges(a) : std::vector<std::pair<int, int>>{{1, 0}};
         if (ranges.size() > 1 && (cmd == "play" || cmd == "render")) throw std::runtime_error(cmd + " takes one bar range");
         int from = ranges[0].first, to = ranges[0].second;
+        auto loadBars = [&] { auto s = load(a); checkBars(s, ranges); return s; };
         if (cmd == "show") {
-            auto s = load(a);
+            auto s = loadBars();
             for (size_t i = 0; i < ranges.size(); i++)
                 std::cout << vd::show(s, ranges[i].first, ranges[i].second, {a.opt.count("summary") > 0, i == 0, a.opt.count("vel") > 0});
         }
@@ -325,18 +431,25 @@ int main(int argc, char** argv) {
         else if (cmd == "apply") {
             if (a.pos.size() < 2 || !a.opt.count("o")) throw std::runtime_error("usage: vibedrum apply in.mid edits.txt -o out.mid");
             auto s = load(a); auto script = slurp(a.pos[1]);
-            std::cout << vd::apply(s, {script.begin(), script.end()});
-            auto bytes = vd::writeMidi(s);
-            std::ofstream(a.opt["o"], std::ios::binary).write((const char*)bytes.data(), bytes.size());
-        } else if (cmd == "play") return play(load(a), from, to, a.opt.count("loop"), a.opt.count("drums-only"), atof(opt("gain", "1").c_str()));
-        else if (cmd == "render") {
+            auto summary = vd::apply(s, {script.begin(), script.end()});
+            spit(a.opt["o"], vd::writeMidi(s));   // written before the summary prints, so a failed write never looks like an applied edit
+            std::cout << summary;
+        } else if (cmd == "play") {
+            double gain = gainOf(a);
+            return play(loadBars(), from, to, a.opt.count("loop"), a.opt.count("drums-only"), gain);
+        } else if (cmd == "render") {
             if (!a.opt.count("o")) throw std::runtime_error("usage: vibedrum render in.mid -o out.wav [--bars 17-24] [--drums-only] [--gain 1]");
-            return render(load(a), a.opt["o"], from, to, a.opt.count("drums-only"), atof(opt("gain", "1").c_str()));
+            checkOut(a);
+            double gain = gainOf(a);
+            return render(loadBars(), a.opt["o"], from, to, a.opt.count("drums-only"), gain);
         } else if (cmd == "new") {
             if (a.pos.empty()) throw std::runtime_error("usage: vibedrum new out.mid [--bars 16] [--bpm 140] [--sig 4/4]");
+            long bars = whole("--bars", opt("bars", "16"), 1, 10000, ", use 1 to 10000"), num = 0, den = 4;   // a bare --sig N means N/4, as before
+            double bpm = number("--bpm", opt("bpm", "140"), 20, 400, ", use 20 to 400");
             auto sig = opt("sig", "4/4"); auto slash = sig.find('/');
-            auto bytes = vd::writeMidi(vd::newSong(atoi(opt("bars", "16").c_str()), atof(opt("bpm", "140").c_str()), atoi(sig.c_str()), slash == sig.npos ? 4 : atoi(sig.c_str() + slash + 1)));
-            std::ofstream(a.pos[0], std::ios::binary).write((const char*)bytes.data(), bytes.size());
+            if (!toLong(sig.substr(0, slash), 1, 32, num) || (slash != sig.npos && (!toLong(sig.substr(slash + 1), 1, 64, den) || (den & (den - 1)))))
+                throw std::runtime_error("bad --sig " + sig + ", use N/D like 4/4 or 7/8 (N 1 to 32, D a power of two up to 64)");
+            spit(a.pos[0], vd::writeMidi(vd::newSong(bars, bpm, num, den)));
         } else if (cmd == "clip") return clip(a);
         else if (cmd == "selfcheck") return selfcheck();
         else { fputs("usage: vibedrum show|json|diff|apply|play|render|clip|new|selfcheck ...   see docs/FORMAT.md\n", stderr); return 2; }

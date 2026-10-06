@@ -1,13 +1,23 @@
 #!/bin/sh
 # vibedrum: build the engine if needed, start the page, open it. Safe to run twice. Stop it with Ctrl+C.
-# Run it as: sh start.sh
+# Run it as: sh start.sh   (in Finder: double click start.command)
 cd "$(dirname "$0")" || exit 1
-URL=http://localhost:8790
+HERE=$(pwd -P)
+URL=http://localhost:${VIBEDRUM_PORT:-8790}
 
-if curl -fs "$URL/api/state" >/dev/null 2>&1; then
-  echo "vibedrum is already running at $URL"
-  open "$URL" 2>/dev/null
-  exit 0
+# Does anything answer on the port, and is it the page server of THIS folder?
+answers() { curl -s -m 3 -o /dev/null "$URL/api/state" 2>/dev/null; }
+ours() { curl -s -m 3 "$URL/api/state" 2>/dev/null | grep -qF "\"root\": \"$HERE\""; }
+
+if answers; then
+  if ours; then
+    echo "vibedrum is already running at $URL"
+    open "$URL" 2>/dev/null
+    exit 0
+  fi
+  echo "Something else is using $URL: another program, or another copy of the vibedrum folder."
+  echo "Quit that program, or stop the other copy (Ctrl+C in its window), then run this again."
+  exit 1
 fi
 
 if [ ! -x build/vibedrum ] || [ -n "$(find core cli -type f -newer build/vibedrum)" ]; then
@@ -27,6 +37,7 @@ if [ ! -x build/vibedrum ] || [ -n "$(find core cli -type f -newer build/vibedru
   ./build/vibedrum selfcheck || exit 1
 fi
 
-(sleep 1; open "$URL" 2>/dev/null) &
+# Open the page only once our own server answers, so a failed start never opens somebody else's page.
+(for _ in 1 2 3 4 5 6 7 8 9 10; do sleep 1; ours && { open "$URL" 2>/dev/null; break; }; done) &
 echo "Press Ctrl+C to stop."
 exec python3 ui/server.py
