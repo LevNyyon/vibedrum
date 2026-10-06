@@ -1,0 +1,84 @@
+# Builds demo/pop-punk-riff-demo.mid: 24 bars at 172 bpm with a guitar track, stiff on purpose.
+#   vibedrum new demo/pop-punk-riff-demo.mid --bars 24 --bpm 172
+#   vibedrum apply demo/pop-punk-riff-demo.mid demo/pop-punk-riff-demo.txt -o demo/pop-punk-riff-demo.mid
+#   python3 tools/add_riff.py demo/pop-punk-riff-demo.mid demo/pop-punk-riff-demo.mid
+
+# bars 1-4, intro: floor tom eighths instead of a cymbal
+bar 1 grid=16
+crash1 49 |9--- ---- ---- ----|
+snare 38  |---- 9--- ---- 9---|
+tom5 43   |--7- --7- 7-7- --7-|
+kick 36   |9--- ---- 9--- ----|
+bar 2 grid=16
+snare 38  |---- 9--- ---- 9---|
+tom5 43   |7-7- --7- 7-7- --7-|
+kick 36   |9--- ---- 9--- ----|
+copy from=2 to=3-4
+bar 4 grid=16
+snare 38  |---- 9--- ---- 7777|
+tom5 43   |7-7- --7- 7-7- ----|
+
+# bars 5-12, verse: closed hat eighths at one velocity, kick with a push on the and of 4
+bar 5 grid=16
+crash1 49 |9--- ---- ---- ----|
+hh 42     |--7- 7-7- 7-7- 7-7-|
+snare 38  |---- 9--- ---- 9---|
+kick 36   |9--- --9- 9--- ----|
+bar 6 grid=16
+hh 42     |7-7- 7-7- 7-7- 7-7-|
+snare 38  |---- 9--- ---- 9---|
+kick 36   |9--- --9- 9-9- --9-|
+copy from=6 to=7
+copy from=5-6 to=9-10
+copy from=6 to=11
+delete bars=9 lanes=crash1
+bar 9 grid=16
+hh 42     |7-7- 7-7- 7-7- 7-7-|
+bar 8 grid=16
+hh 42     |7-7- 7-7- 7-7- ----|
+snare 38  |---- 9--- ---- 7-77|
+kick 36   |9--- --9- 9--- ----|
+bar 12 grid=16
+hh 42     |7-7- 7-7- ---- ----|
+snare 38  |---- 9--- 7777 77--|
+tom2 48   |---- ---- ---- --77|
+kick 36   |9--- --9- ---- ----|
+
+# bars 13-20, chorus: open hat eighths, busier kick
+bar 13 grid=16
+crash1 49  |9--- ---- ---- ----|
+hh_open 46 |--7- 7-7- 7-7- 7-7-|
+snare 38   |---- 9--- ---- 9---|
+kick 36    |9-9- ---- 9-9- ----|
+bar 14 grid=16
+hh_open 46 |7-7- 7-7- 7-7- 7-7-|
+snare 38   |---- 9--- ---- 9---|
+kick 36    |9-9- --9- -99- --9-|
+copy from=14 to=15
+copy from=13-14 to=17-18
+copy from=14 to=19
+delete bars=17 lanes=crash1
+bar 17 grid=16
+hh_open 46 |7-7- 7-7- 7-7- 7-7-|
+bar 16 grid=16
+hh_open 46 |7-7- 7-7- 7-7- ----|
+snare 38   |---- 9--- ---- 77--|
+tom2 48    |---- ---- ---- --77|
+kick 36    |9-9- --9- -99- ----|
+bar 20 grid=16
+hh_open 46 |7-7- 7-7- ---- ----|
+snare 38   |---- 9--- 77-- ----|
+tom2 48    |---- ---- --77 77--|
+tom5 43    |---- ---- ---- --77|
+kick 36    |9-9- --9- ---- ----|
+
+# bars 21-24, half time ending: crash quarters all at full, snare on 3
+bar 21 grid=16
+crash1 49 |9--- 9--- 9--- 9---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9--- --9- ---- 9-9-|
+copy from=21 to=22-24
+bar 24 grid=16
+crash1 49 |9--- 9--- ---- ----|
+snare 38  |---- ---- 7-7- 7777|
+kick 36   |9--- --9- ---- ----|

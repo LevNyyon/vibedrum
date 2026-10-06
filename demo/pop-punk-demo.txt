@@ -1,0 +1,67 @@
+# Builds demo/pop-punk-demo.mid: 24 bars at 180 bpm, stiff on purpose so there is something to fix.
+#   vibedrum new demo/pop-punk-demo.mid --bars 24 --bpm 180
+#   vibedrum apply demo/pop-punk-demo.mid demo/pop-punk-demo.txt -o demo/pop-punk-demo.mid
+
+# bars 1-8, verse: closed hat eighths at one velocity, backbeat on 2 and 4
+bar 1 grid=16
+hh 42     |7-7- 7-7- 7-7- 7-7-|
+snare 38  |---- 9--- ---- 9---|
+kick 36   |9--- --9- 9-9- ----|
+bar 2 grid=16
+hh 42     |7-7- 7-7- 7-7- 7-7-|
+snare 38  |---- 9--- ---- 9---|
+kick 36   |9--- --9- 9--- --9-|
+copy from=1-2 to=3-8
+bar 1 grid=16
+crash1 49 |9--- ---- ---- ----|
+hh 42     |--7- 7-7- 7-7- 7-7-|
+# small fill, beat 4
+bar 4 grid=16
+hh 42     |7-7- 7-7- 7-7- ----|
+snare 38  |---- 9--- ---- 7777|
+# fill into the chorus, beats 3 and 4
+bar 8 grid=16
+hh 42     |7-7- 7-7- ---- ----|
+snare 38  |---- 9--- 7777 7777|
+kick 36   |9--- --9- ---- ----|
+
+# bars 9-16, chorus: crash eighths all at full, same backbeat, busier kick
+bar 9 grid=16
+crash1 49 |9-9- 9-9- 9-9- 9-9-|
+snare 38  |---- 9--- ---- 9---|
+kick 36   |9-9- --9- 9-9- --9-|
+bar 10 grid=16
+crash1 49 |9-9- 9-9- 9-9- 9-9-|
+snare 38  |---- 9--- ---- 9---|
+kick 36   |9-9- --9- -99- --9-|
+copy from=9-10 to=11-16
+bar 12 grid=16
+crash1 49 |9-9- 9-9- 9-9- ----|
+snare 38  |---- 9--- ---- 77--|
+tom2 48   |---- ---- ---- --77|
+bar 16 grid=16
+crash1 49 |9-9- 9-9- ---- ----|
+snare 38  |---- 9--- 77-- ----|
+tom1 50   |---- ---- --77 ----|
+tom2 48   |---- ---- ---- 77--|
+tom5 43   |---- ---- ---- --77|
+kick 36   |9-9- --9- ---- ----|
+
+# bars 17-20, bridge: half time, ride quarters, a flat snare build in the last bar
+bar 17 grid=16
+crash1 49 |9--- ---- ---- ----|
+ride 51   |---- 7--- 7--- 7---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9--- --9- ---- 9---|
+bar 18 grid=16
+ride 51   |7--- 7--- 7--- 7---|
+snare 38  |---- ---- 9--- ----|
+kick 36   |9--- --9- ---- 9-9-|
+copy from=18 to=19
+bar 20 grid=16
+ride 51   |7--- 7--- ---- ----|
+snare 38  |---- ---- 7-7- 7777|
+kick 36   |9--- --9- ---- ----|
+
+# bars 21-24, last chorus: a plain copy of the first
+copy from=9-12 to=21-24
